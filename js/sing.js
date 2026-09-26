@@ -88,8 +88,9 @@ export class SingMode {
   }
 
   onKey(e) {
-    if (e.code === 'Space') this.run(true);
-    else if (e.key === 'r' || e.key === 'R') this.hearReference();
+    const key = e.key.toLowerCase();
+    if (e.code === 'Space' || key === 'n') this.run(true);
+    else if (key === 'a') this.hearReference();
   }
 
   onSettings(field) {

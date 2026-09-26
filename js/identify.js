@@ -3,6 +3,7 @@ import { INTERVALS, intervalBySemis, midiToName, pickItem } from './music.js';
 import { settings, getRange, vowelsFor, vowelText } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
+const AUTO_NEXT_DELAY = 1200; // ms to show a correct answer before moving on
 const freshStats = () => ({ total: 0, correct: 0, streak: 0, best: 0, per: {} });
 
 export class IdentifyMode {
@@ -28,15 +29,25 @@ export class IdentifyMode {
   }
 
   onKey(e) {
+    const key = e.key.toLowerCase();
     if (e.code === 'Space') {
-      if (!this.item || this.answered) this.next();
-      else this.play();
-    } else if (e.key === 'r' || e.key === 'R') {
+      if (!this.item || this.answered) this.next(); // Next only once answered
+    } else if (key === 'n') {
+      this.next();
+    } else if (key === 'a') {
       this.play();
+    } else if (this.answered && key === 's') {
+      this.play();
+    } else if (this.answered && key === 'd' && this.chosen !== this.item.interval.semis) {
+      this.playSemis(this.chosen);
+    } else if (this.item && !this.answered) {
+      const iv = INTERVALS.find((i) => i.key === key && settings.intervals.includes(i.semis));
+      if (iv) this.answer(iv.semis);
     }
   }
 
   async next() {
+    clearTimeout(this.autoNextTimer); // moving on manually cancels a pending auto-next
     try {
       this.item = pickItem(settings, getRange(), this.item);
     } catch (err) {
@@ -74,7 +85,7 @@ export class IdentifyMode {
     for (const iv of INTERVALS.filter((i) => settings.intervals.includes(i.semis))) {
       const b = document.createElement('button');
       b.dataset.semis = iv.semis;
-      b.innerHTML = `<b>${iv.short}</b><small>${iv.name}</small>`;
+      b.innerHTML = `<kbd class="key">${iv.key.toUpperCase()}</kbd><b>${iv.short}</b><small>${iv.name}</small>`;
       b.disabled = !this.item || this.answered;
       b.onclick = () => this.answer(iv.semis);
       box.append(b);
@@ -105,10 +116,18 @@ export class IdentifyMode {
       <div class="detail">${desc}</div>
       <div class="controls">
         <button class="primary" data-act="next">Next ▶ <kbd>Space</kbd></button>
-        <button data-act="correct">▶ Hear ${item.interval.short}</button>
-        ${ok ? '' : `<button data-act="chosen" data-semis="${semis}">▶ Hear your answer (${chosen.short})</button>`}
+        <button data-act="correct">▶ Hear ${item.interval.short} <kbd>S</kbd></button>
+        ${ok ? '' : `<button data-act="chosen" data-semis="${semis}">▶ Hear your answer (${chosen.short}) <kbd>D</kbd></button>`}
       </div>`;
-    $('idPrompt').textContent = ok ? 'Nice ear!' : 'Compare the two, then move on.';
+    const auto = ok && settings.autoNext;
+    $('idPrompt').textContent = auto ? 'Nice ear! Next one coming…' : ok ? 'Nice ear!' : 'Compare the two, then move on.';
+    if (auto) {
+      const item = this.item;
+      this.autoNextTimer = setTimeout(() => {
+        // Only if nothing else moved on meanwhile and Interval ID is still the active tab.
+        if (this.item === item && document.body.dataset.mode === 'identify') this.next();
+      }, AUTO_NEXT_DELAY);
+    }
     this.renderStats();
   }
 

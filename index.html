@@ -87,8 +87,9 @@
         <div class="card exercise">
           <div class="prompt" id="idPrompt">Press <b>New interval</b> (or Space) to hear two notes.</div>
           <div class="controls">
-            <button id="idPlay" class="primary">▶ New interval</button>
-            <button id="idReplay" disabled>↻ Replay <kbd>R</kbd></button>
+            <button id="idPlay" class="primary">▶ New interval <kbd>N</kbd></button>
+            <button id="idReplay" disabled>↻ Replay <kbd>A</kbd></button>
+            <label class="check auto-next"><input type="checkbox" id="autoNext"> Auto next if correct</label>
           </div>
           <div class="answers" id="idAnswers"></div>
           <div class="feedback" id="idFeedback"></div>
@@ -105,9 +106,9 @@
           <div class="prompt" id="sgPrompt">Listen to two notes, then sing them back after the count-in.</div>
           <div class="interval-label" id="sgInterval">&nbsp;</div>
           <div class="controls">
-            <button id="sgStart" class="primary">▶ New interval</button>
+            <button id="sgStart" class="primary">▶ New interval <kbd>N</kbd></button>
             <button id="sgRetry" disabled>🎤 Try again</button>
-            <button id="sgHear" disabled>↻ Hear reference</button>
+            <button id="sgHear" disabled>↻ Hear reference <kbd>A</kbd></button>
           </div>
           <div class="phase-row">
             <div class="phase" id="sgPhase">&nbsp;</div>

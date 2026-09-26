@@ -15,6 +15,7 @@ const DEFAULTS = {
   noteDur: 1.0,
   showInterval: true,
   octaveTolerant: true,
+  autoNext: false, // Interval ID: go to the next interval after a correct answer
   tolerance: 25, // cents
   singDur: 1.5, // seconds per sung note
 };
@@ -174,6 +175,7 @@ export function initSettingsUI() {
   bindSlider('singDur', (v) => `${v.toFixed(2)} s`);
   bindCheck('showInterval');
   bindCheck('octaveTolerant');
+  bindCheck('autoNext');
 }
 
 function bindSlider(key, fmt) {

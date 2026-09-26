@@ -65,9 +65,10 @@ document.querySelectorAll('.tab[data-mode]').forEach((tab) => {
   };
 });
 
-// Keyboard shortcuts: Space = new/next, R = replay
+// Keyboard shortcuts (handled per mode): N = new interval, Space = next, A = replay,
+// interval answer keys 2–8 / W E T Y U, S = hear correct, D = hear your answer.
 document.addEventListener('keydown', (e) => {
-  if (e.target.matches('select, input') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+  if (e.target.matches?.('select, textarea, input[type="text"], input[type="number"]') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
   if (e.code === 'Space') e.preventDefault();
   modes[mode].onKey(e);
 });

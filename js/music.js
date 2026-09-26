@@ -3,19 +3,21 @@
 export const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 export const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
 
+// `key`: keyboard shortcut — major/perfect intervals on the digit row, minor
+// intervals and the tritone on the letters between them (like black keys).
 export const INTERVALS = [
-  { semis: 1, short: 'm2', name: 'Minor 2nd' },
-  { semis: 2, short: 'M2', name: 'Major 2nd' },
-  { semis: 3, short: 'm3', name: 'Minor 3rd' },
-  { semis: 4, short: 'M3', name: 'Major 3rd' },
-  { semis: 5, short: 'P4', name: 'Perfect 4th' },
-  { semis: 6, short: 'TT', name: 'Tritone' },
-  { semis: 7, short: 'P5', name: 'Perfect 5th' },
-  { semis: 8, short: 'm6', name: 'Minor 6th' },
-  { semis: 9, short: 'M6', name: 'Major 6th' },
-  { semis: 10, short: 'm7', name: 'Minor 7th' },
-  { semis: 11, short: 'M7', name: 'Major 7th' },
-  { semis: 12, short: 'P8', name: 'Octave' },
+  { semis: 1, short: 'm2', name: 'Minor 2nd', key: 'w' },
+  { semis: 2, short: 'M2', name: 'Major 2nd', key: '2' },
+  { semis: 3, short: 'm3', name: 'Minor 3rd', key: 'e' },
+  { semis: 4, short: 'M3', name: 'Major 3rd', key: '3' },
+  { semis: 5, short: 'P4', name: 'Perfect 4th', key: '4' },
+  { semis: 6, short: 'TT', name: 'Tritone', key: 't' },
+  { semis: 7, short: 'P5', name: 'Perfect 5th', key: '5' },
+  { semis: 8, short: 'm6', name: 'Minor 6th', key: 'y' },
+  { semis: 9, short: 'M6', name: 'Major 6th', key: '6' },
+  { semis: 10, short: 'm7', name: 'Minor 7th', key: 'u' },
+  { semis: 11, short: 'M7', name: 'Major 7th', key: '7' },
+  { semis: 12, short: 'P8', name: 'Octave', key: '8' },
 ];
 
 export const intervalBySemis = (s) => INTERVALS.find((i) => i.semis === s);
