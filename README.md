@@ -2,6 +2,8 @@
 
 A browser-based singing coach. No build step — plain HTML/CSS/ES modules.
 
+**Live:** https://lk1248.github.io/VoiceCoach/
+
 ## Modes
 
 - **Interval ID** — hear two notes, identify the interval (m2 … octave).
