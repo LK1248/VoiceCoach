@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Voice Coach</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-mode="identify">
+  <header class="topbar">
+    <div class="brand"><span class="logo">𝄞</span> Voice Coach</div>
+    <nav class="tabs">
+      <button class="tab active" data-mode="identify">Interval ID</button>
+      <button class="tab" data-mode="sing">Interval Singing</button>
+      <button class="tab" disabled title="Coming soon">Registers</button>
+      <button class="tab" disabled title="Coming soon">Vocal Range</button>
+    </nav>
+  </header>
+
+  <div class="layout">
+    <aside class="settings">
+      <section>
+        <h3>Instrument</h3>
+        <select id="instrument"></select>
+        <div id="loadStatus" class="hint"></div>
+      </section>
+
+      <section>
+        <h3>Intervals</h3>
+        <div class="row-btns">
+          <button class="small" data-preset="all">All</button>
+          <button class="small" data-preset="none">None</button>
+          <button class="small" data-preset="basic">Basic</button>
+        </div>
+        <div id="intervalList" class="checklist"></div>
+      </section>
+
+      <section>
+        <h3>Direction</h3>
+        <div class="seg">
+          <label><input type="radio" name="direction" value="asc"><span>↑ Ascending</span></label>
+          <label><input type="radio" name="direction" value="desc"><span>↓ Descending</span></label>
+          <label><input type="radio" name="direction" value="random"><span>Random</span></label>
+        </div>
+      </section>
+
+      <section>
+        <h3>Root note</h3>
+        <select id="root"></select>
+        <div id="rangeBox" class="sub">
+          <div class="field-label">Random root range (both notes stay inside)</div>
+          <div class="range-row">
+            <select id="rangeMin"></select><span>to</span><select id="rangeMax"></select>
+          </div>
+          <button id="rangeReset" class="link">Reset to instrument default</button>
+        </div>
+      </section>
+
+      <section>
+        <h3>Playback</h3>
+        <label class="slider">Note length <output id="noteDurVal"></output>
+          <input type="range" id="noteDur" min="0.4" max="2.5" step="0.1">
+        </label>
+      </section>
+
+      <section data-only="sing">
+        <h3>Singing</h3>
+        <label class="check"><input type="checkbox" id="showInterval"> Show interval name while playing</label>
+        <label class="check"><input type="checkbox" id="octaveTolerant"> Accept any octave</label>
+        <label class="slider">Tolerance <output id="toleranceVal"></output>
+          <input type="range" id="tolerance" min="10" max="100" step="5">
+        </label>
+        <label class="slider">Time per sung note <output id="singDurVal"></output>
+          <input type="range" id="singDur" min="1" max="4" step="0.25">
+        </label>
+      </section>
+    </aside>
+
+    <main>
+      <!-- Interval identification -->
+      <section id="view-identify" class="view">
+        <div class="card exercise">
+          <div class="prompt" id="idPrompt">Press <b>New interval</b> (or Space) to hear two notes.</div>
+          <div class="controls">
+            <button id="idPlay" class="primary">▶ New interval</button>
+            <button id="idReplay" disabled>↻ Replay <kbd>R</kbd></button>
+          </div>
+          <div class="answers" id="idAnswers"></div>
+          <div class="feedback" id="idFeedback"></div>
+        </div>
+        <div class="card stats">
+          <div class="stats-head"><h3>Session</h3><button id="idResetStats" class="link">Reset</button></div>
+          <div id="idStats"></div>
+        </div>
+      </section>
+
+      <!-- Interval singing -->
+      <section id="view-sing" class="view" hidden>
+        <div class="card exercise">
+          <div class="prompt" id="sgPrompt">Listen to two notes, then sing them back after the count-in.</div>
+          <div class="interval-label" id="sgInterval">&nbsp;</div>
+          <div class="controls">
+            <button id="sgStart" class="primary">▶ New interval</button>
+            <button id="sgRetry" disabled>🎤 Try again</button>
+            <button id="sgHear" disabled>↻ Hear reference</button>
+          </div>
+          <div class="phase-row">
+            <div class="phase" id="sgPhase">&nbsp;</div>
+            <div class="meter" title="Mic level"><div id="sgLevel"></div></div>
+          </div>
+          <canvas id="sgCanvas" height="260"></canvas>
+          <div id="sgResults" class="results"></div>
+          <div class="controls compare" id="sgCompare" hidden>
+            <span class="field-label">Compare:</span>
+            <button id="cmpRef">Reference</button>
+            <button id="cmpMine">My take</button>
+            <button id="cmpBoth">Both together</button>
+            <button id="cmpSeq">Reference → my take</button>
+            <button id="cmpStop">■ Stop</button>
+          </div>
+        </div>
+        <div class="card stats">
+          <div class="stats-head"><h3>Session</h3><button id="sgResetStats" class="link">Reset</button></div>
+          <div id="sgStats"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
