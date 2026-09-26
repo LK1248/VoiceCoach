@@ -1,0 +1,665 @@
+{
+ "source": "VocalSet (Wilkins, Seetharaman, Wahl, Pardo, 2018), CC BY 4.0, https://zenodo.org/records/1442513",
+ "voices": {
+  "male": {
+   "singer": "m1",
+   "notes": {
+    "a": [
+     {
+      "midi": 48,
+      "f0": 47.724,
+      "file": "male/a_48.wav",
+      "loopStart": 0.08104,
+      "loopEnd": 0.76456
+     },
+     {
+      "midi": 50,
+      "f0": 49.57,
+      "file": "male/a_50.wav",
+      "loopStart": 0.08023,
+      "loopEnd": 0.65274
+     },
+     {
+      "midi": 52,
+      "f0": 51.483,
+      "file": "male/a_52.wav",
+      "loopStart": 0.08077,
+      "loopEnd": 1.3373
+     },
+     {
+      "midi": 53,
+      "f0": 52.467,
+      "file": "male/a_53.wav",
+      "loopStart": 0.08054,
+      "loopEnd": 0.80698
+     },
+     {
+      "midi": 55,
+      "f0": 54.106,
+      "file": "male/a_55.wav",
+      "loopStart": 0.08007,
+      "loopEnd": 0.78923
+     },
+     {
+      "midi": 57,
+      "f0": 56.497,
+      "file": "male/a_57.wav",
+      "loopStart": 0.08075,
+      "loopEnd": 0.81075
+     },
+     {
+      "midi": 59,
+      "f0": 58.782,
+      "file": "male/a_59.wav",
+      "loopStart": 0.08129,
+      "loopEnd": 0.73741
+     },
+     {
+      "midi": 60,
+      "f0": 59.574,
+      "file": "male/a_60.wav",
+      "loopStart": 0.08168,
+      "loopEnd": 0.79075
+     },
+     {
+      "midi": 62,
+      "f0": 61.413,
+      "file": "male/a_62.wav",
+      "loopStart": 0.08016,
+      "loopEnd": 0.46413
+     }
+    ],
+    "e": [
+     {
+      "midi": 48,
+      "f0": 47.935,
+      "file": "male/e_48.wav",
+      "loopStart": 0.08098,
+      "loopEnd": 0.60277
+     },
+     {
+      "midi": 50,
+      "f0": 49.68,
+      "file": "male/e_50.wav",
+      "loopStart": 0.08122,
+      "loopEnd": 0.96227
+     },
+     {
+      "midi": 52,
+      "f0": 51.572,
+      "file": "male/e_52.wav",
+      "loopStart": 0.08025,
+      "loopEnd": 1.14374
+     },
+     {
+      "midi": 53,
+      "f0": 52.627,
+      "file": "male/e_53.wav",
+      "loopStart": 0.08236,
+      "loopEnd": 0.83138
+     },
+     {
+      "midi": 55,
+      "f0": 54.509,
+      "file": "male/e_55.wav",
+      "loopStart": 0.08011,
+      "loopEnd": 1.19814
+     },
+     {
+      "midi": 57,
+      "f0": 56.51,
+      "file": "male/e_57.wav",
+      "loopStart": 0.08054,
+      "loopEnd": 0.87079
+     },
+     {
+      "midi": 59,
+      "f0": 58.587,
+      "file": "male/e_59.wav",
+      "loopStart": 0.08025,
+      "loopEnd": 0.83506
+     },
+     {
+      "midi": 60,
+      "f0": 59.451,
+      "file": "male/e_60.wav",
+      "loopStart": 0.08193,
+      "loopEnd": 0.86707
+     },
+     {
+      "midi": 62,
+      "f0": 61.343,
+      "file": "male/e_62.wav",
+      "loopStart": 0.0807,
+      "loopEnd": 0.61125
+     }
+    ],
+    "i": [
+     {
+      "midi": 48,
+      "f0": 47.615,
+      "file": "male/i_48.wav",
+      "loopStart": 0.08014,
+      "loopEnd": 0.74451
+     },
+     {
+      "midi": 50,
+      "f0": 49.478,
+      "file": "male/i_50.wav",
+      "loopStart": 0.08027,
+      "loopEnd": 0.78921
+     },
+     {
+      "midi": 52,
+      "f0": 51.507,
+      "file": "male/i_52.wav",
+      "loopStart": 0.08107,
+      "loopEnd": 1.3483
+     },
+     {
+      "midi": 53,
+      "f0": 52.225,
+      "file": "male/i_53.wav",
+      "loopStart": 0.08202,
+      "loopEnd": 0.74082
+     },
+     {
+      "midi": 55,
+      "f0": 54.526,
+      "file": "male/i_55.wav",
+      "loopStart": 0.08016,
+      "loopEnd": 1.01351
+     },
+     {
+      "midi": 57,
+      "f0": 56.412,
+      "file": "male/i_57.wav",
+      "loopStart": 0.0819,
+      "loopEnd": 0.71206
+     },
+     {
+      "midi": 59,
+      "f0": 58.459,
+      "file": "male/i_59.wav",
+      "loopStart": 0.08066,
+      "loopEnd": 0.80766
+     },
+     {
+      "midi": 60,
+      "f0": 59.757,
+      "file": "male/i_60.wav",
+      "loopStart": 0.08068,
+      "loopEnd": 0.99934
+     },
+     {
+      "midi": 62,
+      "f0": 61.449,
+      "file": "male/i_62.wav",
+      "loopStart": 0.0827,
+      "loopEnd": 0.69791
+     }
+    ],
+    "o": [
+     {
+      "midi": 48,
+      "f0": 47.483,
+      "file": "male/o_48.wav",
+      "loopStart": 0.08395,
+      "loopEnd": 0.67469
+     },
+     {
+      "midi": 50,
+      "f0": 49.443,
+      "file": "male/o_50.wav",
+      "loopStart": 0.08048,
+      "loopEnd": 0.73454
+     },
+     {
+      "midi": 52,
+      "f0": 51.748,
+      "file": "male/o_52.wav",
+      "loopStart": 0.08059,
+      "loopEnd": 0.7024
+     },
+     {
+      "midi": 53,
+      "f0": 52.396,
+      "file": "male/o_53.wav",
+      "loopStart": 0.08161,
+      "loopEnd": 0.87626
+     },
+     {
+      "midi": 55,
+      "f0": 54.523,
+      "file": "male/o_55.wav",
+      "loopStart": 0.08045,
+      "loopEnd": 1.11887
+     },
+     {
+      "midi": 57,
+      "f0": 56.535,
+      "file": "male/o_57.wav",
+      "loopStart": 0.08011,
+      "loopEnd": 0.69644
+     },
+     {
+      "midi": 59,
+      "f0": 58.841,
+      "file": "male/o_59.wav",
+      "loopStart": 0.08111,
+      "loopEnd": 0.64921
+     },
+     {
+      "midi": 60,
+      "f0": 59.626,
+      "file": "male/o_60.wav",
+      "loopStart": 0.08025,
+      "loopEnd": 0.92388
+     },
+     {
+      "midi": 62,
+      "f0": 61.397,
+      "file": "male/o_62.wav",
+      "loopStart": 0.0819,
+      "loopEnd": 0.68132
+     }
+    ],
+    "u": [
+     {
+      "midi": 48,
+      "f0": 47.517,
+      "file": "male/u_48.wav",
+      "loopStart": 0.08435,
+      "loopEnd": 1.19272
+     },
+     {
+      "midi": 50,
+      "f0": 49.678,
+      "file": "male/u_50.wav",
+      "loopStart": 0.08122,
+      "loopEnd": 0.69873
+     },
+     {
+      "midi": 52,
+      "f0": 51.558,
+      "file": "male/u_52.wav",
+      "loopStart": 0.08152,
+      "loopEnd": 1.02138
+     },
+     {
+      "midi": 53,
+      "f0": 52.582,
+      "file": "male/u_53.wav",
+      "loopStart": 0.08215,
+      "loopEnd": 0.79204
+     },
+     {
+      "midi": 55,
+      "f0": 54.664,
+      "file": "male/u_55.wav",
+      "loopStart": 0.08159,
+      "loopEnd": 1.23649
+     },
+     {
+      "midi": 57,
+      "f0": 56.343,
+      "file": "male/u_57.wav",
+      "loopStart": 0.0807,
+      "loopEnd": 0.73696
+     },
+     {
+      "midi": 59,
+      "f0": 58.414,
+      "file": "male/u_59.wav",
+      "loopStart": 0.08143,
+      "loopEnd": 0.77261
+     },
+     {
+      "midi": 60,
+      "f0": 59.796,
+      "file": "male/u_60.wav",
+      "loopStart": 0.08324,
+      "loopEnd": 1.259
+     },
+     {
+      "midi": 62,
+      "f0": 61.301,
+      "file": "male/u_62.wav",
+      "loopStart": 0.08206,
+      "loopEnd": 0.70254
+     }
+    ]
+   }
+  },
+  "female": {
+   "singer": "f5",
+   "notes": {
+    "a": [
+     {
+      "midi": 60,
+      "f0": 59.845,
+      "file": "female/a_60.wav",
+      "loopStart": 0.08116,
+      "loopEnd": 0.72522
+     },
+     {
+      "midi": 62,
+      "f0": 61.837,
+      "file": "female/a_62.wav",
+      "loopStart": 0.08154,
+      "loopEnd": 0.44247
+     },
+     {
+      "midi": 64,
+      "f0": 63.714,
+      "file": "female/a_64.wav",
+      "loopStart": 0.08129,
+      "loopEnd": 0.68583
+     },
+     {
+      "midi": 65,
+      "f0": 65.179,
+      "file": "female/a_65.wav",
+      "loopStart": 0.08018,
+      "loopEnd": 0.39476
+     },
+     {
+      "midi": 67,
+      "f0": 66.973,
+      "file": "female/a_67.wav",
+      "loopStart": 0.08068,
+      "loopEnd": 0.84206
+     },
+     {
+      "midi": 69,
+      "f0": 69.336,
+      "file": "female/a_69.wav",
+      "loopStart": 0.08079,
+      "loopEnd": 0.46642
+     },
+     {
+      "midi": 71,
+      "f0": 71.2,
+      "file": "female/a_71.wav",
+      "loopStart": 0.08068,
+      "loopEnd": 0.40293
+     },
+     {
+      "midi": 72,
+      "f0": 72.134,
+      "file": "female/a_72.wav",
+      "loopStart": 0.08066,
+      "loopEnd": 0.68751
+     },
+     {
+      "midi": 74,
+      "f0": 74.238,
+      "file": "female/a_74.wav",
+      "loopStart": 0.08005,
+      "loopEnd": 0.32692
+     }
+    ],
+    "e": [
+     {
+      "midi": 60,
+      "f0": 59.944,
+      "file": "female/e_60.wav",
+      "loopStart": 0.08018,
+      "loopEnd": 0.64385
+     },
+     {
+      "midi": 62,
+      "f0": 61.833,
+      "file": "female/e_62.wav",
+      "loopStart": 0.08018,
+      "loopEnd": 0.37932
+     },
+     {
+      "midi": 64,
+      "f0": 63.85,
+      "file": "female/e_64.wav",
+      "loopStart": 0.08063,
+      "loopEnd": 0.87628
+     },
+     {
+      "midi": 65,
+      "f0": 65.044,
+      "file": "female/e_65.wav",
+      "loopStart": 0.08027,
+      "loopEnd": 0.4373
+     },
+     {
+      "midi": 67,
+      "f0": 66.937,
+      "file": "female/e_67.wav",
+      "loopStart": 0.08034,
+      "loopEnd": 0.82027
+     },
+     {
+      "midi": 69,
+      "f0": 69.062,
+      "file": "female/e_69.wav",
+      "loopStart": 0.08011,
+      "loopEnd": 0.4198
+     },
+     {
+      "midi": 71,
+      "f0": 71.069,
+      "file": "female/e_71.wav",
+      "loopStart": 0.08016,
+      "loopEnd": 0.39678
+     },
+     {
+      "midi": 72,
+      "f0": 72.023,
+      "file": "female/e_72.wav",
+      "loopStart": 0.08091,
+      "loopEnd": 0.82528
+     },
+     {
+      "midi": 74,
+      "f0": 74.014,
+      "file": "female/e_74.wav",
+      "loopStart": 0.08023,
+      "loopEnd": 0.40177
+     }
+    ],
+    "i": [
+     {
+      "midi": 60,
+      "f0": 60.36,
+      "file": "female/i_60.wav",
+      "loopStart": 0.08027,
+      "loopEnd": 0.7541
+     },
+     {
+      "midi": 62,
+      "f0": 62.353,
+      "file": "female/i_62.wav",
+      "loopStart": 0.08159,
+      "loopEnd": 0.45862
+     },
+     {
+      "midi": 64,
+      "f0": 64.23,
+      "file": "female/i_64.wav",
+      "loopStart": 0.0805,
+      "loopEnd": 1.0295
+     },
+     {
+      "midi": 65,
+      "f0": 65.432,
+      "file": "female/i_65.wav",
+      "loopStart": 0.08227,
+      "loopEnd": 0.41463
+     },
+     {
+      "midi": 67,
+      "f0": 66.93,
+      "file": "female/i_67.wav",
+      "loopStart": 0.08075,
+      "loopEnd": 0.94141
+     },
+     {
+      "midi": 69,
+      "f0": 68.956,
+      "file": "female/i_69.wav",
+      "loopStart": 0.08125,
+      "loopEnd": 0.43213
+     },
+     {
+      "midi": 71,
+      "f0": 70.896,
+      "file": "female/i_71.wav",
+      "loopStart": 0.08143,
+      "loopEnd": 0.42569
+     },
+     {
+      "midi": 72,
+      "f0": 71.734,
+      "file": "female/i_72.wav",
+      "loopStart": 0.08045,
+      "loopEnd": 0.76746
+     },
+     {
+      "midi": 74,
+      "f0": 74.161,
+      "file": "female/i_74.wav",
+      "loopStart": 0.08032,
+      "loopEnd": 0.3907
+     }
+    ],
+    "o": [
+     {
+      "midi": 60,
+      "f0": 60.053,
+      "file": "female/o_60.wav",
+      "loopStart": 0.08195,
+      "loopEnd": 0.86692
+     },
+     {
+      "midi": 62,
+      "f0": 62.067,
+      "file": "female/o_62.wav",
+      "loopStart": 0.08186,
+      "loopEnd": 0.39054
+     },
+     {
+      "midi": 64,
+      "f0": 64.011,
+      "file": "female/o_64.wav",
+      "loopStart": 0.08129,
+      "loopEnd": 1.10299
+     },
+     {
+      "midi": 65,
+      "f0": 65.46,
+      "file": "female/o_65.wav",
+      "loopStart": 0.08052,
+      "loopEnd": 0.44299
+     },
+     {
+      "midi": 67,
+      "f0": 67.107,
+      "file": "female/o_67.wav",
+      "loopStart": 0.08122,
+      "loopEnd": 0.95338
+     },
+     {
+      "midi": 69,
+      "f0": 69.102,
+      "file": "female/o_69.wav",
+      "loopStart": 0.08043,
+      "loopEnd": 0.43741
+     },
+     {
+      "midi": 71,
+      "f0": 70.685,
+      "file": "female/o_71.wav",
+      "loopStart": 0.08098,
+      "loopEnd": 0.42531
+     },
+     {
+      "midi": 72,
+      "f0": 72.258,
+      "file": "female/o_72.wav",
+      "loopStart": 0.08036,
+      "loopEnd": 0.472
+     },
+     {
+      "midi": 74,
+      "f0": 74.142,
+      "file": "female/o_74.wav",
+      "loopStart": 0.08098,
+      "loopEnd": 0.42549
+     }
+    ],
+    "u": [
+     {
+      "midi": 60,
+      "f0": 60.068,
+      "file": "female/u_60.wav",
+      "loopStart": 0.08317,
+      "loopEnd": 0.75707
+     },
+     {
+      "midi": 62,
+      "f0": 62.227,
+      "file": "female/u_62.wav",
+      "loopStart": 0.08215,
+      "loopEnd": 0.47537
+     },
+     {
+      "midi": 64,
+      "f0": 64.243,
+      "file": "female/u_64.wav",
+      "loopStart": 0.08041,
+      "loopEnd": 0.99277
+     },
+     {
+      "midi": 65,
+      "f0": 65.44,
+      "file": "female/u_65.wav",
+      "loopStart": 0.08243,
+      "loopEnd": 0.46488
+     },
+     {
+      "midi": 67,
+      "f0": 67.183,
+      "file": "female/u_67.wav",
+      "loopStart": 0.08107,
+      "loopEnd": 0.94689
+     },
+     {
+      "midi": 69,
+      "f0": 69.314,
+      "file": "female/u_69.wav",
+      "loopStart": 0.08095,
+      "loopEnd": 0.42467
+     },
+     {
+      "midi": 71,
+      "f0": 71.073,
+      "file": "female/u_71.wav",
+      "loopStart": 0.082,
+      "loopEnd": 0.43685
+     },
+     {
+      "midi": 72,
+      "f0": 71.959,
+      "file": "female/u_72.wav",
+      "loopStart": 0.08088,
+      "loopEnd": 0.75136
+     },
+     {
+      "midi": 74,
+      "f0": 74.315,
+      "file": "female/u_74.wav",
+      "loopStart": 0.08007,
+      "loopEnd": 0.43787
+     }
+    ]
+   }
+  }
+ }
+}

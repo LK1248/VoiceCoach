@@ -23,6 +23,11 @@
         <h3>Instrument</h3>
         <select id="instrument"></select>
         <div id="loadStatus" class="hint"></div>
+        <div id="vowelBox" class="sub">
+          <div class="vowel-row"><span class="field-label">Note 1 vowel</span><div class="seg" id="vowel1Seg"></div></div>
+          <div class="vowel-row"><span class="field-label">Note 2 vowel</span><div class="seg" id="vowel2Seg"></div></div>
+          <div class="hint">A "ahh" · E "bear" · I "greed" · O "oh" · U "moon"</div>
+        </div>
       </section>
 
       <section>
@@ -126,6 +131,14 @@
       </section>
     </main>
   </div>
+
+  <footer class="credits">
+    Voice recordings: <a href="https://zenodo.org/records/1442513" target="_blank" rel="noopener">VocalSet</a>
+    (Wilkins, Seetharaman, Wahl &amp; Pardo, 2018), licensed
+    <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>;
+    trimmed, looped and retuned. Instrument samples: FluidR3_GM via
+    <a href="https://github.com/gleitz/midi-js-soundfonts" target="_blank" rel="noopener">midi-js-soundfonts</a>.
+  </footer>
 
   <script type="module" src="js/main.js"></script>
 </body>

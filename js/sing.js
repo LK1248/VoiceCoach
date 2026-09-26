@@ -1,7 +1,7 @@
 // Interval singing: hear two notes, sing them back, get graded on pitch
 // accuracy, and compare the recording against the reference.
 import { INTERVALS, midiToName, pickItem, median } from './music.js';
-import { settings, getRange } from './settings.js';
+import { settings, getRange, vowelsFor, vowelText } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 const COUNT_IN_BEAT = 0.6; // seconds
@@ -93,7 +93,7 @@ export class SingMode {
   }
 
   onSettings(field) {
-    if (field === 'showInterval' && this.item && !this.busy) this.showLabel(true);
+    if ((field === 'showInterval' || field === 'vowel' || field === 'instrument') && this.item && !this.busy) this.showLabel(true);
     if ((field === 'tolerance' || field === 'octaveTolerant') && this.result) {
       // Re-grade the existing take with the new criteria (stats keep the original score).
       this.result = grade(this.frames, this.item, this.D, settings.tolerance, settings.octaveTolerant);
@@ -126,7 +126,7 @@ export class SingMode {
     if (!item) { el.innerHTML = '&nbsp;'; return; }
     const arrow = item.dir === 'asc' ? '↑' : '↓';
     el.textContent = reveal || settings.showInterval
-      ? `${arrow} ${item.interval.name}  ·  ${midiToName(item.root)} → ${midiToName(item.second)}`
+      ? `${arrow} ${item.interval.name}  ·  ${midiToName(item.root)} → ${midiToName(item.second)}${vowelText(item)}`
       : `${arrow} ? ? ?`;
   }
 
@@ -150,7 +150,7 @@ export class SingMode {
       this.showLabel(false);
       this.setPhase('👂 Listen…');
       this.draw();
-      const r = await this.engine.playSequence(settings.instrument, [this.item.root, this.item.second], { dur: settings.noteDur });
+      const r = await this.engine.playSequence(settings.instrument, [this.item.root, this.item.second], { dur: settings.noteDur, vowels: vowelsFor(this.item) });
       this.status.fallback(r.fallback);
       await this.engine.waitUntil(r.end + 0.35);
 
@@ -216,7 +216,7 @@ export class SingMode {
   async hearReference() {
     if (!this.item || this.busy) return;
     this.stopPlayback();
-    const r = await this.engine.playSequence(settings.instrument, [this.item.root, this.item.second], { dur: settings.noteDur });
+    const r = await this.engine.playSequence(settings.instrument, [this.item.root, this.item.second], { dur: settings.noteDur, vowels: vowelsFor(this.item) });
     this.status.fallback(r.fallback);
   }
 
@@ -226,7 +226,7 @@ export class SingMode {
     this.stopPlayback();
     const D = this.D;
     const ref = (when, gain = 1) =>
-      this.engine.playSequence(settings.instrument, [this.item.root, this.item.second], { dur: D, gap: 0, when, gain });
+      this.engine.playSequence(settings.instrument, [this.item.root, this.item.second], { dur: D, gap: 0, when, gain, vowels: vowelsFor(this.item) });
     const when = this.engine.ensure().currentTime + 0.1;
     let heads = [when];
     if (kind === 'ref') await ref(when);

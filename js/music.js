@@ -26,6 +26,7 @@ export const midiToName = (m, flats = false) =>
 export const midiToFreq = (m) => 440 * 2 ** ((m - 69) / 12);
 export const freqToMidi = (f) => 69 + 12 * Math.log2(f / 440);
 
+const VOWEL_KEYS = ['A', 'E', 'I', 'O', 'U'];
 const randChoice = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 /**
@@ -55,7 +56,9 @@ export function pickItem(s, range, previous) {
     } else {
       root = Number(s.root);
     }
-    const item = { root, second: root + sign * interval.semis, interval, dir };
+    // Vowels drawn now so replays of this item use the same ones (when a note's vowel is set to Random).
+    const randomVowels = [randChoice(VOWEL_KEYS), randChoice(VOWEL_KEYS)];
+    const item = { root, second: root + sign * interval.semis, interval, dir, randomVowels };
     // Avoid repeating the exact same item twice in a row when there's a choice.
     if (!previous || previous.root !== item.root || previous.second !== item.second) return item;
   }

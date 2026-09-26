@@ -3,12 +3,14 @@ import { INSTRUMENTS } from './instruments.js';
 import { midiToName, midiToFreq } from './music.js';
 
 const SF_BASE = 'https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM';
+const VOICE_BASE = 'samples/voices/';
 
 export class AudioEngine {
   constructor() {
     this.ctx = null;
     this.master = null;
-    this.buffers = new Map(); // "sf:midi" -> Promise<AudioBuffer>
+    this.buffers = new Map(); // url -> Promise<AudioBuffer>
+    this.manifest = null; // Promise of samples/voices/manifest.json
     this.active = new Set();
   }
 
@@ -23,33 +25,61 @@ export class AudioEngine {
     return this.ctx;
   }
 
-  load(instKey, midi) {
-    const inst = INSTRUMENTS[instKey];
-    if (!inst.sf) return Promise.resolve(null);
-    const key = `${inst.sf}:${midi}`;
-    if (!this.buffers.has(key)) {
-      const url = `${SF_BASE}/${inst.sf}-mp3/${midiToName(midi, true)}.mp3`;
+  fetchBuffer(url) {
+    if (!this.buffers.has(url)) {
       const p = fetch(url)
         .then((r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
           return r.arrayBuffer();
         })
         .then((b) => this.ensure().decodeAudioData(b));
-      p.catch(() => this.buffers.delete(key)); // allow retry later
-      this.buffers.set(key, p);
+      p.catch(() => this.buffers.delete(url)); // allow retry later
+      this.buffers.set(url, p);
     }
-    return this.buffers.get(key);
+    return this.buffers.get(url);
   }
 
-  /** Load a list of notes; resolves to the number of failures. */
-  async preload(instKey, midis, onProgress) {
+  loadManifest() {
+    if (!this.manifest) {
+      this.manifest = fetch(`${VOICE_BASE}manifest.json`).then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status} for voice manifest`);
+        return r.json();
+      });
+      this.manifest.catch(() => { this.manifest = null; });
+    }
+    return this.manifest;
+  }
+
+  /**
+   * Resolve the sample for a note: { buf, rate, loop } or null for the synth.
+   * Recorded voices use the nearest recorded pitch, retuned via playbackRate
+   * from its measured f0, and loop their steady part so notes can be any length.
+   */
+  async loadSample(instKey, midi, vowel = 'A') {
+    const inst = INSTRUMENTS[instKey];
+    if (inst.vocalset) {
+      const manifest = await this.loadManifest();
+      const notes = manifest.voices[inst.vocalset].notes[vowel.toLowerCase()];
+      const e = notes.reduce((a, b) => (Math.abs(b.midi - midi) < Math.abs(a.midi - midi) ? b : a));
+      const buf = await this.fetchBuffer(VOICE_BASE + e.file);
+      return { buf, rate: 2 ** ((midi - e.f0) / 12), loop: [e.loopStart, Math.min(e.loopEnd, buf.duration)] };
+    }
+    if (inst.sf) {
+      const buf = await this.fetchBuffer(`${SF_BASE}/${inst.sf}-mp3/${midiToName(midi, true)}.mp3`);
+      return { buf, rate: 1, loop: null };
+    }
+    return null;
+  }
+
+  /** Load [midi, vowel] pairs; resolves to the number of failures. */
+  async preload(instKey, notes, onProgress) {
     let done = 0;
     let failed = 0;
     await Promise.all(
-      midis.map((m) =>
-        this.load(instKey, m)
+      notes.map(([m, v]) =>
+        this.loadSample(instKey, m, v)
           .then(() => done++, () => failed++)
-          .finally(() => onProgress?.(done, failed, midis.length)),
+          .finally(() => onProgress?.(done, failed, notes.length)),
       ),
     );
     return failed;
@@ -60,34 +90,42 @@ export class AudioEngine {
    * AudioContext time; `fallback` is true if any sample failed and a synth
    * tone was used instead.
    */
-  async playSequence(instKey, midis, { dur = 1, gap = 0.08, when, gain = 1 } = {}) {
+  async playSequence(instKey, midis, { dur = 1, gap = 0.08, when, gain = 1, vowels = [] } = {}) {
     const ctx = this.ensure();
-    const bufs = await Promise.all(midis.map((m) => this.load(instKey, m).catch(() => null)));
-    const fallback = !!INSTRUMENTS[instKey].sf && bufs.some((b) => !b);
+    const inst = INSTRUMENTS[instKey];
+    const samples = await Promise.all(
+      midis.map((m, i) => this.loadSample(instKey, m, vowels[i]).catch(() => null)),
+    );
+    const fallback = !!(inst.sf || inst.vocalset) && samples.some((s) => !s);
     let t = when ?? ctx.currentTime + 0.06;
     const start = t;
     midis.forEach((m, i) => {
-      this.playNote(bufs[i], m, t, dur, gain);
+      this.playNote(samples[i], m, t, dur, gain * (inst.gain ?? 1));
       t += dur + gap;
     });
     return { start, end: t - gap, fallback };
   }
 
-  playNote(buf, midi, when, dur, gain = 1) {
+  playNote(sample, midi, when, dur, gain = 1) {
     const ctx = this.ctx;
     const g = ctx.createGain();
     g.connect(this.master);
     let src;
-    if (buf) {
+    if (sample) {
       src = ctx.createBufferSource();
-      src.buffer = buf;
+      src.buffer = sample.buf;
+      src.playbackRate.value = sample.rate;
+      if (sample.loop) {
+        src.loop = true;
+        [src.loopStart, src.loopEnd] = sample.loop;
+      }
       g.gain.setValueAtTime(gain, when);
     } else {
       src = ctx.createOscillator();
       src.type = 'triangle';
       src.frequency.value = midiToFreq(midi);
       g.gain.setValueAtTime(0, when);
-      g.gain.linearRampToValueAtTime(0.35 * gain, when + 0.02);
+      g.gain.linearRampToValueAtTime(0.08 * gain, when + 0.02); // ~RMS of the samples
     }
     g.gain.setTargetAtTime(0, when + dur, 0.06);
     src.connect(g);

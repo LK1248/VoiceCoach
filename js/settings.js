@@ -1,11 +1,13 @@
 // Shared exercise settings, persisted in localStorage, bound to the sidebar UI.
 import { INTERVALS, midiToName } from './music.js';
-import { INSTRUMENTS, NOTE_MIN, NOTE_MAX } from './instruments.js';
+import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS } from './instruments.js';
 
 const KEY = 'voiceCoach.settings.v1';
 
 const DEFAULTS = {
   instrument: 'piano',
+  vowel1: 'A', // vowels sung by the recorded voices on note 1 / note 2
+  vowel2: 'A',
   intervals: INTERVALS.map((i) => i.semis),
   direction: 'asc', // 'asc' | 'desc' | 'random'
   root: 'random', // 'random' | MIDI number
@@ -39,6 +41,24 @@ const listeners = [];
 
 export const onSettingsChange = (fn) => listeners.push(fn);
 
+/**
+ * Vowels for the two notes of an item (used only by the recorded voices).
+ * 'random' resolves to the vowels drawn when the item was picked.
+ */
+export const vowelsFor = (item) =>
+  [settings.vowel1, settings.vowel2].map((v, i) => (v === 'random' ? item?.randomVowels?.[i] ?? 'A' : v));
+
+/** Text like ' · vowels O → I' for recorded voices, '' otherwise. */
+export const vowelText = (item) => {
+  if (!INSTRUMENTS[settings.instrument].vocalset) return '';
+  const [a, b] = vowelsFor(item);
+  return ` · vowels ${a} → ${b}`;
+};
+
+/** Vowels that may be needed for playback (all five if either note is random). */
+export const vowelsInUse = () =>
+  [settings.vowel1, settings.vowel2].includes('random') ? VOWELS.map((v) => v.key) : [...new Set([settings.vowel1, settings.vowel2])];
+
 export const getRange = () => settings.ranges[settings.instrument] || INSTRUMENTS[settings.instrument].range;
 
 function changed(field) {
@@ -53,11 +73,28 @@ export function initSettingsUI() {
   const inst = $('instrument');
   for (const [key, def] of Object.entries(INSTRUMENTS)) inst.add(new Option(def.label, key));
   inst.value = settings.instrument;
+  const syncVowelBox = () => { $('vowelBox').hidden = !INSTRUMENTS[settings.instrument].vocalset; };
+  syncVowelBox();
   inst.onchange = () => {
     settings.instrument = inst.value;
     syncRange();
+    syncVowelBox();
     changed('instrument');
   };
+
+  // Vowels (recorded voices)
+  for (const key of ['vowel1', 'vowel2']) {
+    const seg = $(`${key}Seg`);
+    for (const v of [...VOWELS, { key: 'random', hint: 'a random vowel for each new interval', label: '🎲' }]) {
+      const label = document.createElement('label');
+      label.title = v.hint;
+      label.innerHTML = `<input type="radio" name="${key}" value="${v.key}"><span>${v.label ?? v.key}</span>`;
+      const input = label.querySelector('input');
+      input.checked = settings[key] === v.key;
+      input.onchange = () => { settings[key] = v.key; changed('vowel'); };
+      seg.append(label);
+    }
+  }
 
   // Intervals
   const list = $('intervalList');

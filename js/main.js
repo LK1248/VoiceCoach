@@ -1,7 +1,7 @@
 import { AudioEngine } from './audio.js';
 import { MicRecorder } from './recorder.js';
 import { INSTRUMENTS } from './instruments.js';
-import { settings, getRange, initSettingsUI, onSettingsChange } from './settings.js';
+import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js';
 import { IdentifyMode } from './identify.js';
 import { SingMode } from './sing.js';
 
@@ -30,11 +30,13 @@ async function preloadRange() {
   const token = ++preloadToken;
   const inst = settings.instrument;
   loadStatus.classList.remove('warn');
-  if (!INSTRUMENTS[inst].sf) { loadStatus.textContent = 'Synthesized — no download needed.'; return; }
+  const def = INSTRUMENTS[inst];
+  if (!def.sf && !def.vocalset) { loadStatus.textContent = 'Synthesized — no download needed.'; return; }
   const [lo, hi] = getRange();
-  const midis = [];
-  for (let m = lo; m <= hi; m++) midis.push(m);
-  const failed = await engine.preload(inst, midis, (done, fail, total) => {
+  const notes = [];
+  const vs = def.vocalset ? vowelsInUse() : [null];
+  for (let m = lo; m <= hi; m++) for (const v of vs) notes.push([m, v ?? undefined]);
+  const failed = await engine.preload(inst, notes, (done, fail, total) => {
     if (token === preloadToken) loadStatus.textContent = `Loading samples ${done + fail}/${total}…`;
   });
   if (token !== preloadToken) return;
@@ -44,7 +46,7 @@ async function preloadRange() {
 preloadRange();
 
 onSettingsChange((field) => {
-  if (field === 'instrument' || field === 'range') preloadRange();
+  if (field === 'instrument' || field === 'range' || field === 'vowel') preloadRange();
   if (field === 'intervals') modes.identify.renderAnswers();
   modes.sing.onSettings(field);
 });

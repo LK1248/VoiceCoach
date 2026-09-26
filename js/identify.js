@@ -1,6 +1,6 @@
 // Interval identification: hear two notes, pick the interval.
 import { INTERVALS, intervalBySemis, midiToName, pickItem } from './music.js';
-import { settings, getRange } from './settings.js';
+import { settings, getRange, vowelsFor, vowelText } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 const freshStats = () => ({ total: 0, correct: 0, streak: 0, best: 0, per: {} });
@@ -64,7 +64,7 @@ export class IdentifyMode {
 
   async playNotes(midis) {
     this.engine.stopAll();
-    const r = await this.engine.playSequence(settings.instrument, midis, { dur: settings.noteDur });
+    const r = await this.engine.playSequence(settings.instrument, midis, { dur: settings.noteDur, vowels: vowelsFor(this.item) });
     this.status.fallback(r.fallback);
   }
 
@@ -98,7 +98,7 @@ export class IdentifyMode {
     if (ok) p.c++;
 
     this.renderAnswers();
-    const desc = `${midiToName(item.root)} → ${midiToName(item.second)} · ${item.interval.name}, ${item.dir === 'asc' ? 'ascending' : 'descending'}`;
+    const desc = `${midiToName(item.root)} → ${midiToName(item.second)} · ${item.interval.name}, ${item.dir === 'asc' ? 'ascending' : 'descending'}${vowelText(item)}`;
     const chosen = intervalBySemis(semis);
     $('idFeedback').innerHTML = `
       <div class="verdict ${ok ? 'ok' : 'no'}">${ok ? '✓ Correct!' : `✗ Not quite — you chose ${chosen.name}`}</div>
