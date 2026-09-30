@@ -1,3 +1,5 @@
+import { pickInstrument } from './instruments.js?v=20260930221223';
+
 // Music theory helpers: note names, frequencies, intervals.
 
 export const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -60,7 +62,9 @@ export function pickItem(s, range, previous) {
     }
     // Vowels drawn now so replays of this item use the same ones (when a note's vowel is set to Random).
     const randomVowels = [randChoice(VOWEL_KEYS), randChoice(VOWEL_KEYS)];
-    const item = { root, second: root + sign * interval.semis, interval, dir, randomVowels };
+    const second = root + sign * interval.semis;
+    // Likewise the instrument, used when the instrument setting is Random.
+    const item = { root, second, interval, dir, randomVowels, instrument: pickInstrument([root, second]) };
     // Avoid repeating the exact same item twice in a row when there's a choice.
     if (!previous || previous.root !== item.root || previous.second !== item.second) return item;
   }

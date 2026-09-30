@@ -4,11 +4,12 @@
 //    graph in pale gray; the newest is drawn in the text colour, thicker.
 //  • Pitch following: the user must hold the note within tolerance for
 //    `holdTime` seconds; then the next note plays. Successes are counted per run.
-import { midiToName } from './music.js?v=20260930215851';
-import { settings, vowelsFor } from './settings.js?v=20260930215851';
-import { getAllowedNotes } from './noteRange.js?v=20260930215851';
-import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, noteCardHtml } from './grading.js?v=20260930215851';
-import { createPlot, drawBand, drawTrace, drawPlayhead, drawMessage } from './plot.js?v=20260930215851';
+import { midiToName } from './music.js?v=20260930221223';
+import { settings, vowelsFor, instrumentFor, soundText } from './settings.js?v=20260930221223';
+import { pickInstrument } from './instruments.js?v=20260930221223';
+import { getAllowedNotes } from './noteRange.js?v=20260930221223';
+import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, noteCardHtml } from './grading.js?v=20260930221223';
+import { createPlot, drawBand, drawTrace, drawPlayhead, drawMessage } from './plot.js?v=20260930221223';
 
 const $ = (id) => document.getElementById(id);
 const VOICE_FRAMES = 3; // consecutive steady voiced frames (~70 ms) that start an attempt
@@ -58,6 +59,9 @@ export class SingleMode {
 
   get following() { return settings.singleMode === 'follow'; }
 
+  /** The current note's randomly drawn sound choices, in the shape settings helpers expect. */
+  get soundItem() { return { randomVowels: [this.randomVowel, this.randomVowel], instrument: this.randomInstrument }; }
+
   onKey(e) {
     const key = e.key.toLowerCase();
     if (e.code === 'Space' || key === 'n') this.newNote();
@@ -81,6 +85,7 @@ export class SingleMode {
       for (const a of this.attempts) a.result = this.gradeAttempt(a.frames, a.D);
       this.renderResults();
     }
+    if (field === 'instrument' || field === 'vowel') this.renderUI();
     if (field === 'holdTime') {
       this.renderHold(0);
       this.renderUI(); // prompt mentions the hold time
@@ -105,6 +110,7 @@ export class SingleMode {
       const choices = notes.length > 1 ? notes.filter((m) => m !== this.target) : notes;
       this.target = rand(choices);
       this.randomVowel = rand(VOWEL_KEYS);
+      this.randomInstrument = pickInstrument([this.target]);
       this.abortAttempt();
       this.attempts = [];
       this.follow = [];
@@ -135,8 +141,8 @@ export class SingleMode {
     this.engine.stopAll();
     this.deafUntil = Infinity;
     this.setPhase(`👂 Listen: ${midiToName(this.target)}`);
-    const r = await this.engine.playSequence(settings.instrument, [this.target], {
-      dur: settings.singDur, vowels: vowelsFor({ randomVowels: [this.randomVowel] }),
+    const r = await this.engine.playSequence(instrumentFor(this.soundItem), [this.target], {
+      dur: settings.singDur, vowels: vowelsFor(this.soundItem),
     });
     this.status.fallback(r.fallback);
     this.deafUntil = r.end + DEAF_TAIL;
@@ -174,6 +180,14 @@ export class SingleMode {
       this.recorder.stop();
       this.live = null;
     }
+  }
+
+  /** Ignore the mic until AudioContext time `t` (e.g. while a note preview plays). */
+  ignoreMicUntil(t) {
+    if (this.live) this.abortAttempt();
+    this.deafUntil = Math.max(this.deafUntil, t);
+    this.run = [];
+    this.resetHold();
   }
 
   resetHold() {
@@ -280,6 +294,7 @@ export class SingleMode {
       const choices = notes.length > 1 ? notes.filter((m) => m !== this.target) : notes;
       this.target = rand(choices);
       this.randomVowel = rand(VOWEL_KEYS);
+      this.randomInstrument = pickInstrument([this.target]);
       this.follow = [];
       this.renderUI();
       await this.playTarget();
@@ -299,7 +314,7 @@ export class SingleMode {
     $('snPrompt').textContent = follow
       ? `Sing each note and hold it in tune for ${settings.holdTime.toFixed(1)} s to move on to the next.`
       : 'Hear a note, then sing it. Every attempt is scored; sing again to improve, or press N for a new note.';
-    $('snTarget').innerHTML = this.target ? `🎯 ${midiToName(this.target)}` : '&nbsp;';
+    $('snTarget').innerHTML = this.target ? `🎯 ${midiToName(this.target)}<small class="sound">${soundText(this.soundItem).replace(/vowels (\w) → \w/, 'vowel $1')}</small>` : '&nbsp;';
     $('snNew').innerHTML = `${follow && this.target ? '⏭ Skip note' : '▶ New note'} <kbd>N</kbd>`;
     $('snHear').disabled = !this.target;
     $('snStop').disabled = !this.active;

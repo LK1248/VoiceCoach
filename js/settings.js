@@ -1,6 +1,6 @@
 // Shared exercise settings, persisted in localStorage, bound to the sidebar UI.
-import { INTERVALS, midiToName } from './music.js?v=20260930215851';
-import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS } from './instruments.js?v=20260930215851';
+import { INTERVALS, midiToName } from './music.js?v=20260930221223';
+import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, instrumentRange } from './instruments.js?v=20260930221223';
 
 const KEY = 'voiceCoach.settings.v1';
 
@@ -35,7 +35,7 @@ function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) || '{}');
     const s = { ...structuredClone(DEFAULTS), ...saved };
-    if (!INSTRUMENTS[s.instrument]) s.instrument = DEFAULTS.instrument;
+    if (!INSTRUMENTS[s.instrument] && s.instrument !== RANDOM) s.instrument = DEFAULTS.instrument;
     return s;
   } catch {
     return structuredClone(DEFAULTS);
@@ -54,18 +54,34 @@ export const onSettingsChange = (fn) => listeners.push(fn);
 export const vowelsFor = (item) =>
   [settings.vowel1, settings.vowel2].map((v, i) => (v === 'random' ? item?.randomVowels?.[i] ?? 'A' : v));
 
-/** Text like ' · vowels O → I' for recorded voices, '' otherwise. */
-export const vowelText = (item) => {
-  if (!INSTRUMENTS[settings.instrument].vocalset) return '';
-  const [a, b] = vowelsFor(item);
-  return ` · vowels ${a} → ${b}`;
+/** Instrument that plays an item: the setting, or the one drawn for the item when Random. */
+export const instrumentFor = (item) =>
+  (settings.instrument === RANDOM ? item?.instrument ?? 'piano' : settings.instrument);
+
+/** Whether recorded voices (and so vowels) can be in use. */
+export const voicesPossible = () =>
+  settings.instrument === RANDOM || !!INSTRUMENTS[settings.instrument].vocalset;
+
+/**
+ * Text like ' · Female voice, vowels O → I': the instrument when Random is
+ * selected, and the vowels when a recorded voice plays; '' if neither.
+ */
+export const soundText = (item) => {
+  const key = instrumentFor(item);
+  const parts = [];
+  if (settings.instrument === RANDOM) parts.push(INSTRUMENTS[key].label);
+  if (INSTRUMENTS[key].vocalset) {
+    const [a, b] = vowelsFor(item);
+    parts.push(`vowels ${a} → ${b}`);
+  }
+  return parts.length ? ` · ${parts.join(', ')}` : '';
 };
 
 /** Vowels that may be needed for playback (all five if either note is random). */
 export const vowelsInUse = () =>
   [settings.vowel1, settings.vowel2].includes('random') ? VOWELS.map((v) => v.key) : [...new Set([settings.vowel1, settings.vowel2])];
 
-export const getRange = () => settings.ranges[settings.instrument] || INSTRUMENTS[settings.instrument].range;
+export const getRange = () => settings.ranges[settings.instrument] || instrumentRange(settings.instrument);
 
 export const settingChanged = (field) => changed(field);
 
@@ -80,8 +96,9 @@ export function initSettingsUI() {
   // Instrument
   const inst = $('instrument');
   for (const [key, def] of Object.entries(INSTRUMENTS)) inst.add(new Option(def.label, key));
+  inst.add(new Option('🎲 Random', RANDOM));
   inst.value = settings.instrument;
-  const syncVowelBox = () => { $('vowelBox').hidden = !INSTRUMENTS[settings.instrument].vocalset; };
+  const syncVowelBox = () => { $('vowelBox').hidden = !voicesPossible(); };
   syncVowelBox();
   inst.onchange = () => {
     settings.instrument = inst.value;

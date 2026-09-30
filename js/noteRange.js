@@ -1,14 +1,14 @@
 // Single Note theme: vertical note-range slider (two handles, highest note at
 // the top) with a checkbox beside each note in the range. Moving a handle
 // re-enables every note in the new range.
-import { NOTE_MIN, NOTE_MAX, INSTRUMENTS } from './instruments.js?v=20260930215851';
-import { midiToName } from './music.js?v=20260930215851';
-import { settings, settingChanged } from './settings.js?v=20260930215851';
+import { NOTE_MIN, NOTE_MAX, instrumentRange } from './instruments.js?v=20260930221223';
+import { midiToName } from './music.js?v=20260930221223';
+import { settings, settingChanged } from './settings.js?v=20260930221223';
 
 const ROW = 16; // px per semitone
 
 /** [lo, hi] MIDI range; follows the instrument's default until the user sets one. */
-export const getSingleRange = () => settings.singleRange ?? INSTRUMENTS[settings.instrument].range;
+export const getSingleRange = () => settings.singleRange ?? instrumentRange(settings.instrument);
 
 /** Notes the exercise may pick from: the range, minus unticked notes. */
 export function getAllowedNotes() {
@@ -23,7 +23,8 @@ export function getAllowedNotes() {
 const rowTop = (m) => (NOTE_MAX - m) * ROW;
 const isBlack = (m) => midiToName(m).includes('#');
 
-export function initNoteRangeUI(root) {
+/** `onHear(midi)` plays a preview of a note (the ▶ button beside each note in range). */
+export function initNoteRangeUI(root, { onHear } = {}) {
   root.innerHTML = `
     <div class="nr-track"><div class="nr-rail"></div><div class="nr-fill"></div>
       <div class="nr-thumb" data-end="hi" tabindex="0" role="slider" aria-label="Highest note"></div>
@@ -41,7 +42,8 @@ export function initNoteRangeUI(root) {
     row.className = `nr-row${isBlack(m) ? ' black' : ''}`;
     row.style.top = `${rowTop(m)}px`;
     row.dataset.midi = m;
-    row.innerHTML = `<input type="checkbox" value="${m}"><span>${midiToName(m)}</span>`;
+    row.innerHTML = `<input type="checkbox" value="${m}"><span>${midiToName(m)}</span>`
+      + `<button type="button" class="nr-hear" title="Hear ${midiToName(m)}" aria-label="Hear ${midiToName(m)}">▶</button>`;
     list.append(row);
   }
 
@@ -111,6 +113,14 @@ export function initNoteRangeUI(root) {
       else setRange(Math.max(NOTE_MIN, Math.min(hi, lo + d)), hi);
     });
   }
+
+  // Preview buttons sit inside the row's <label>: don't let a click toggle the checkbox.
+  list.addEventListener('click', (e) => {
+    const btn = e.target.closest('.nr-hear');
+    if (!btn) return;
+    e.preventDefault();
+    onHear?.(+btn.closest('.nr-row').dataset.midi);
+  });
 
   list.addEventListener('change', () => {
     settings.singleAllowed = [...list.querySelectorAll('.nr-row:not(.out) input:checked')].map((c) => +c.value);

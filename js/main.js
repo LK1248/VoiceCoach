@@ -1,11 +1,11 @@
-import { AudioEngine } from './audio.js?v=20260930215851';
-import { MicRecorder } from './recorder.js?v=20260930215851';
-import { INSTRUMENTS } from './instruments.js?v=20260930215851';
-import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20260930215851';
-import { IdentifyMode } from './identify.js?v=20260930215851';
-import { SingMode } from './sing.js?v=20260930215851';
-import { SingleMode } from './single.js?v=20260930215851';
-import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20260930215851';
+import { AudioEngine } from './audio.js?v=20260930221223';
+import { MicRecorder } from './recorder.js?v=20260930221223';
+import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20260930221223';
+import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20260930221223';
+import { IdentifyMode } from './identify.js?v=20260930221223';
+import { SingMode } from './sing.js?v=20260930221223';
+import { SingleMode } from './single.js?v=20260930221223';
+import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20260930221223';
 
 const engine = new AudioEngine();
 const recorder = new MicRecorder(engine);
@@ -20,8 +20,18 @@ const status = {
   },
 };
 
+/** Note-range ▶ button: play one note (random instrument/vowel drawn when set to Random). */
+async function previewNote(midi) {
+  const inst = settings.instrument === RANDOM ? pickInstrument([midi]) : settings.instrument;
+  const vowel = settings.vowel1 === 'random' ? VOWELS[Math.floor(Math.random() * VOWELS.length)].key : settings.vowel1;
+  engine.stopAll();
+  const r = await engine.playSequence(inst, [midi], { dur: 1, vowels: [vowel] });
+  status.fallback(r.fallback);
+  modes.single.ignoreMicUntil(r.end + 0.3); // the mic mustn't take the preview for singing
+}
+
 initSettingsUI();
-const noteRange = initNoteRangeUI(document.getElementById('noteRange'));
+const noteRange = initNoteRangeUI(document.getElementById('noteRange'), { onHear: previewNote });
 const modes = {
   identify: new IdentifyMode(engine, status),
   single: new SingleMode(engine, recorder, status),
@@ -36,6 +46,7 @@ async function preloadRange() {
   const token = ++preloadToken;
   const inst = settings.instrument;
   loadStatus.classList.remove('warn');
+  if (inst === RANDOM) { loadStatus.textContent = 'Random: each sound loads the first time it plays.'; return; }
   const def = INSTRUMENTS[inst];
   if (!def.sf && !def.vocalset) { loadStatus.textContent = 'Synthesized — no download needed.'; return; }
   // Interval themes' range plus the Single Note range.

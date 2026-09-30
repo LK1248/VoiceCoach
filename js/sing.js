@@ -1,8 +1,8 @@
 // Interval singing: hear two notes, sing them back, get graded on pitch
 // accuracy, and compare the recording against the reference.
-import { INTERVALS, midiToName, pickItem } from './music.js?v=20260930215851';
-import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, fmtCents, noteCardHtml } from './grading.js?v=20260930215851';
-import { settings, getRange, vowelsFor, vowelText } from './settings.js?v=20260930215851';
+import { INTERVALS, midiToName, pickItem } from './music.js?v=20260930221223';
+import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, fmtCents, noteCardHtml } from './grading.js?v=20260930221223';
+import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20260930221223';
 
 const $ = (id) => document.getElementById(id);
 const COUNT_IN_BEAT = 0.6; // seconds
@@ -103,7 +103,7 @@ export class SingMode {
     if (!item) { el.innerHTML = '&nbsp;'; return; }
     const arrow = item.dir === 'asc' ? '↑' : '↓';
     el.textContent = reveal || settings.showInterval
-      ? `${arrow} ${item.interval.name}  ·  ${midiToName(item.root)} → ${midiToName(item.second)}${vowelText(item)}`
+      ? `${arrow} ${item.interval.name}  ·  ${midiToName(item.root)} → ${midiToName(item.second)}${soundText(item)}`
       : `${arrow} ? ? ?`;
   }
 
@@ -197,7 +197,7 @@ export class SingMode {
 
   playReference() {
     return this.engine
-      .playSequence(settings.instrument, [this.item.root, this.item.second], {
+      .playSequence(instrumentFor(this.item), [this.item.root, this.item.second], {
         dur: settings.singDur, gap: 0, vowels: vowelsFor(this.item),
       })
       .then((r) => { this.status.fallback(r.fallback); return r; });
@@ -258,7 +258,7 @@ export class SingMode {
     this.stopPlayback();
     const D = this.D;
     const ref = (when, gain = 1) =>
-      this.engine.playSequence(settings.instrument, [this.item.root, this.item.second], { dur: D, gap: 0, when, gain, vowels: vowelsFor(this.item) });
+      this.engine.playSequence(instrumentFor(this.item), [this.item.root, this.item.second], { dur: D, gap: 0, when, gain, vowels: vowelsFor(this.item) });
     const when = this.engine.ensure().currentTime + 0.1;
     let heads = [when];
     if (kind === 'ref') await ref(when);

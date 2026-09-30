@@ -1,6 +1,6 @@
 // Interval identification: hear two notes, pick the interval.
-import { INTERVALS, intervalBySemis, midiToName, pickItem } from './music.js?v=20260930215851';
-import { settings, getRange, vowelsFor, vowelText } from './settings.js?v=20260930215851';
+import { INTERVALS, intervalBySemis, midiToName, pickItem } from './music.js?v=20260930221223';
+import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20260930221223';
 
 const $ = (id) => document.getElementById(id);
 const AUTO_NEXT_DELAY = 1200; // ms to show a correct answer before moving on
@@ -75,7 +75,7 @@ export class IdentifyMode {
 
   async playNotes(midis) {
     this.engine.stopAll();
-    const r = await this.engine.playSequence(settings.instrument, midis, { dur: settings.noteDur, vowels: vowelsFor(this.item) });
+    const r = await this.engine.playSequence(instrumentFor(this.item), midis, { dur: settings.noteDur, vowels: vowelsFor(this.item) });
     this.status.fallback(r.fallback);
   }
 
@@ -109,7 +109,7 @@ export class IdentifyMode {
     if (ok) p.c++;
 
     this.renderAnswers();
-    const desc = `${midiToName(item.root)} → ${midiToName(item.second)} · ${item.interval.name}, ${item.dir === 'asc' ? 'ascending' : 'descending'}${vowelText(item)}`;
+    const desc = `${midiToName(item.root)} → ${midiToName(item.second)} · ${item.interval.name}, ${item.dir === 'asc' ? 'ascending' : 'descending'}${soundText(item)}`;
     const chosen = intervalBySemis(semis);
     $('idFeedback').innerHTML = `
       <div class="verdict ${ok ? 'ok' : 'no'}">${ok ? '✓ Correct!' : `✗ Not quite — you chose ${chosen.name}`}</div>

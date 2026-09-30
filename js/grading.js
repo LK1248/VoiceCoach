@@ -1,5 +1,5 @@
 // Shared pitch grading: the same per-note metric is used by every singing theme.
-import { median, midiToName } from './music.js?v=20260930215851';
+import { median, midiToName } from './music.js?v=20260930221223';
 
 export const GRADE_FROM = 0.25; // ignore the first 25% of a note window (onset / glide)
 export const GRADE_TO = 0.95;
