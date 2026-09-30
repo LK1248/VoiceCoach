@@ -61,7 +61,7 @@
         </div>
       </section>
 
-      <section>
+      <section data-only="identify">
         <h3>Playback</h3>
         <label class="slider">Note length <output id="noteDurVal"></output>
           <input type="range" id="noteDur" min="0.4" max="2.5" step="0.1">
@@ -75,7 +75,12 @@
         <label class="slider">Tolerance <output id="toleranceVal"></output>
           <input type="range" id="tolerance" min="10" max="100" step="5">
         </label>
-        <label class="slider">Time per sung note <output id="singDurVal"></output>
+        <div class="field-label">Start singing</div>
+        <div class="seg">
+          <label title="Three clicks, then sing"><input type="radio" name="singStart" value="countdown"><span>Count-in</span></label>
+          <label title="Recording starts when you start singing"><input type="radio" name="singStart" value="detect"><span>Detect voice</span></label>
+        </div>
+        <label class="slider">Note length (played &amp; sung) <output id="singDurVal"></output>
           <input type="range" id="singDur" min="1" max="4" step="0.25">
         </label>
       </section>
@@ -103,11 +108,11 @@
       <!-- Interval singing -->
       <section id="view-sing" class="view" hidden>
         <div class="card exercise">
-          <div class="prompt" id="sgPrompt">Listen to two notes, then sing them back after the count-in.</div>
+          <div class="prompt" id="sgPrompt">Listen to two notes, then sing them back.</div>
           <div class="interval-label" id="sgInterval">&nbsp;</div>
           <div class="controls">
             <button id="sgStart" class="primary">▶ New interval <kbd>N</kbd></button>
-            <button id="sgRetry" disabled>🎤 Try again</button>
+            <button id="sgRetry" disabled>🎤 Try again <kbd>R</kbd></button>
             <button id="sgHear" disabled>↻ Hear reference <kbd>A</kbd></button>
           </div>
           <div class="phase-row">

@@ -74,6 +74,8 @@ body {
 .settings section:last-child { border-bottom: none; }
 .settings h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 body:not([data-mode="sing"]) [data-only="sing"] { display: none; }
+body[data-mode="sing"] [data-only="identify"] { display: none; }
+.settings .seg { margin: 4px 0 8px; }
 
 select, button { font: inherit; color: inherit; }
 select {

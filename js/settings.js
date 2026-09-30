@@ -15,6 +15,7 @@ const DEFAULTS = {
   noteDur: 1.0,
   showInterval: true,
   octaveTolerant: true,
+  singStart: 'countdown', // Interval Singing: 'countdown' | 'detect' (start when singing is heard)
   autoNext: false, // Interval ID: go to the next interval after a correct answer
   tolerance: 25, // cents
   singDur: 1.5, // seconds per sung note
@@ -121,11 +122,13 @@ export function initSettingsUI() {
     };
   });
 
-  // Direction
-  document.querySelectorAll('input[name="direction"]').forEach((r) => {
-    r.checked = r.value === settings.direction;
-    r.onchange = () => { settings.direction = r.value; changed('direction'); };
-  });
+  // Radio groups
+  for (const key of ['direction', 'singStart']) {
+    document.querySelectorAll(`input[name="${key}"]`).forEach((r) => {
+      r.checked = r.value === settings[key];
+      r.onchange = () => { settings[key] = r.value; changed(key); };
+    });
+  }
 
   // Root note + random range
   const root = $('root');

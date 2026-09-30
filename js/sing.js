@@ -5,6 +5,9 @@ import { settings, getRange, vowelsFor, vowelText } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 const COUNT_IN_BEAT = 0.6; // seconds
+const VOICE_FRAMES = 3; // consecutive steady voiced frames (~70 ms) that count as "started singing"
+const VOICE_PREROLL = 0.08; // seconds kept before the detected onset
+const VOICE_TIMEOUT = 15; // seconds to wait for singing in detect mode
 const GRADE_FROM = 0.25; // ignore the first 25% of each window (note onset / glide)
 const GRADE_TO = 0.95;
 const freshStats = () => ({ attempts: 0, scoreSum: 0, passes: 0, per: {} });
@@ -91,6 +94,7 @@ export class SingMode {
     const key = e.key.toLowerCase();
     if (e.code === 'Space' || key === 'n') this.run(true);
     else if (key === 'a') this.hearReference();
+    else if (key === 'r' && this.item) this.run(false); // Try again (same interval)
   }
 
   onSettings(field) {
@@ -106,6 +110,8 @@ export class SingMode {
   onFrame(f) {
     $('sgLevel').style.width = `${Math.min(100, f.rms * 500)}%`;
     if (this.recording && f.t != null) this.frames.push(f);
+    this.voiceWatcher?.(f);
+    this.frameWatcher?.();
   }
 
   setButtons() {
@@ -151,20 +157,26 @@ export class SingMode {
       this.showLabel(false);
       this.setPhase('👂 Listen…');
       this.draw();
-      const r = await this.engine.playSequence(settings.instrument, [this.item.root, this.item.second], { dur: settings.noteDur, vowels: vowelsFor(this.item) });
-      this.status.fallback(r.fallback);
+      // Reference notes have exactly the length of the sung windows.
+      const r = await this.playReference();
       await this.engine.waitUntil(r.end + 0.35);
 
-      // Count-in
-      const t0 = this.engine.ctx.currentTime + 0.05;
-      for (let i = 0; i < 3; i++) this.engine.click(t0 + i * COUNT_IN_BEAT, i === 0);
-      for (let i = 0; i < 3; i++) {
-        await this.engine.waitUntil(t0 + i * COUNT_IN_BEAT);
-        this.setPhase(`Get ready… ${3 - i}`);
+      if (settings.singStart === 'detect') {
+        const name = settings.showInterval ? ` (${midiToName(this.item.root)})` : '';
+        this.setPhase(`🎤 Start singing note 1${name} when ready…`, true);
+        const onset = await this.waitForVoice();
+        this.frames = this.recorder.start(onset - Math.round(VOICE_PREROLL * this.recorder.sr));
+      } else {
+        // Count-in
+        const t0 = this.engine.ctx.currentTime + 0.05;
+        for (let i = 0; i < 3; i++) this.engine.click(t0 + i * COUNT_IN_BEAT, i === 0);
+        for (let i = 0; i < 3; i++) {
+          await this.engine.waitUntil(t0 + i * COUNT_IN_BEAT);
+          this.setPhase(`Get ready… ${3 - i}`);
+        }
+        await this.engine.waitUntil(t0 + 3 * COUNT_IN_BEAT);
+        this.frames = this.recorder.start();
       }
-      await this.engine.waitUntil(t0 + 3 * COUNT_IN_BEAT);
-
-      this.recorder.start();
       this.recording = true;
       await this.liveLoop();
       this.recording = false;
@@ -176,30 +188,80 @@ export class SingMode {
       this.setPhase('Done — review your take below.');
       this.renderResult();
     } catch (err) {
+      if (this.recording) this.recorder.stop();
       this.recording = false;
       const msg = err.name === 'NotAllowedError' ? 'Microphone permission was denied.' : err.message;
       this.setPhase(`⚠️ ${msg}`);
     } finally {
+      this.frameWatcher = null;
+      this.voiceWatcher = null;
       this.busy = false;
       this.setButtons();
       this.draw();
     }
   }
 
+  /**
+   * Resolve with the absolute sample index where steady singing began:
+   * VOICE_FRAMES consecutive voiced frames within a semitone of each other.
+   */
+  waitForVoice() {
+    return new Promise((resolve, reject) => {
+      let run = [];
+      const done = () => { this.voiceWatcher = null; clearTimeout(timer); };
+      const timer = setTimeout(() => {
+        done();
+        reject(new Error('No singing detected. Press Try again when you are ready.'));
+      }, VOICE_TIMEOUT * 1000);
+      this.voiceWatcher = (f) => {
+        if (!f.voiced) { run = []; return; }
+        if (run.length && Math.abs(f.midi - run[run.length - 1].midi) > 1) run = [];
+        run.push(f);
+        if (run.length >= VOICE_FRAMES) {
+          done();
+          resolve(run[0].abs);
+        }
+      };
+    });
+  }
+
+  playReference() {
+    return this.engine
+      .playSequence(settings.instrument, [this.item.root, this.item.second], {
+        dur: settings.singDur, gap: 0, vowels: vowelsFor(this.item),
+      })
+      .then((r) => { this.status.fallback(r.fallback); return r; });
+  }
+
+  /**
+   * Resolve when both note windows are recorded. Completion is checked on each
+   * incoming mic frame (keeps working in a background tab, where
+   * requestAnimationFrame pauses); animation frames only redraw.
+   */
   liveLoop() {
     const D = this.D;
     return new Promise((resolve) => {
-      const tick = () => {
+      let finished = false;
+      const update = () => {
         const t = this.recorder.elapsed;
         const idx = t < D ? 0 : 1;
         const target = [this.item.root, this.item.second][idx];
         const name = settings.showInterval ? `: ${midiToName(target)}` : '';
         this.setPhase(`🎤 Sing note ${idx + 1}${name}`, true);
-        this.draw(Math.min(t, 2 * D));
-        if (t >= 2 * D + 0.1) resolve();
-        else requestAnimationFrame(tick);
+        if (!finished && t >= 2 * D + 0.1) {
+          finished = true;
+          this.frameWatcher = null;
+          resolve();
+        }
       };
-      tick();
+      this.frameWatcher = update;
+      const redraw = () => {
+        if (finished) return;
+        this.draw(Math.min(this.recorder.elapsed, 2 * D));
+        requestAnimationFrame(redraw);
+      };
+      update();
+      redraw();
     });
   }
 
@@ -217,8 +279,7 @@ export class SingMode {
   async hearReference() {
     if (!this.item || this.busy) return;
     this.stopPlayback();
-    const r = await this.engine.playSequence(settings.instrument, [this.item.root, this.item.second], { dur: settings.noteDur, vowels: vowelsFor(this.item) });
-    this.status.fallback(r.fallback);
+    await this.playReference();
   }
 
   /** Reference is re-timed to the sung windows so it lines up with the take. */

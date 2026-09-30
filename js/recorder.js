@@ -5,6 +5,7 @@ import { freqToMidi } from './music.js';
 
 const CHUNK = 1024;
 const WINDOW = 2048;
+const HISTORY_SEC = 1.5; // how far back a recording can be back-dated
 
 const WORKLET_SRC = `
 class RecProc extends AudioWorkletProcessor {
@@ -29,9 +30,12 @@ export class MicRecorder {
     this.ready = false;
     this.recording = false;
     this.window = new Float32Array(WINDOW);
-    this.samples = 0;
+    this.abs = 0; // total samples received since init
+    this.startAbs = 0; // absolute sample where the current recording starts
+    this.history = []; // recent chunks { start, data }, so a recording can be back-dated
+    this.recentFrames = []; // recent pitch frames, same purpose
     this.chunks = [];
-    this.onFrame = null; // ({ t, midi, voiced, rms }) => void
+    this.onFrame = null; // ({ abs, t, midi, voiced, rms }) => void
   }
 
   async init() {
@@ -60,30 +64,51 @@ export class MicRecorder {
   _chunk(c) {
     this.window.copyWithin(0, c.length);
     this.window.set(c, WINDOW - c.length);
-    let t = null;
-    if (this.recording) {
-      this.chunks.push(c);
-      this.samples += c.length;
-      t = (this.samples - WINDOW / 2) / this.sr; // centre of the analysis window
-    }
+    const chunkStart = this.abs;
+    this.abs += c.length;
+    const keepFrom = this.abs - HISTORY_SEC * this.sr;
+    this.history.push({ start: chunkStart, data: c });
+    while (this.history[0].start + CHUNK < keepFrom) this.history.shift();
+    if (this.recording) this.chunks.push(c);
+
     const p = detectPitch(this.window, this.sr);
     const voiced = p.freq > 0 && p.clarity > 0.8 && p.rms > 0.01;
-    this.onFrame?.({ t, midi: voiced ? freqToMidi(p.freq) : null, voiced, rms: p.rms });
+    const center = this.abs - WINDOW / 2; // centre of the analysis window
+    const frame = {
+      abs: center,
+      t: this.recording ? (center - this.startAbs) / this.sr : null,
+      midi: voiced ? freqToMidi(p.freq) : null,
+      voiced,
+      rms: p.rms,
+    };
+    this.recentFrames.push(frame);
+    while (this.recentFrames[0].abs < keepFrom) this.recentFrames.shift();
+    this.onFrame?.(frame);
   }
 
   get elapsed() {
-    return this.recording || this.samples ? this.samples / this.sr : 0;
+    return this.recording ? (this.abs - this.startAbs) / this.sr : 0;
   }
 
-  start() {
-    this.chunks = [];
-    this.samples = 0;
+  /**
+   * Start recording. `fromAbs` (an absolute sample index up to HISTORY_SEC in
+   * the past) back-dates the start using the history buffer. Returns the pitch
+   * frames already captured since the start, with `t` filled in.
+   */
+  start(fromAbs = this.abs) {
+    const past = this.history.filter((h) => h.start + h.data.length > fromAbs);
+    this.startAbs = past.length ? past[0].start : this.abs; // chunk-aligned
+    this.chunks = past.map((h) => h.data);
     this.recording = true;
+    return this.recentFrames
+      .filter((f) => f.abs >= this.startAbs)
+      .map((f) => ({ ...f, t: (f.abs - this.startAbs) / this.sr }));
   }
 
   stop() {
     this.recording = false;
-    const out = this.engine.ctx.createBuffer(1, Math.max(1, this.samples), this.sr);
+    const n = this.chunks.reduce((a, c) => a + c.length, 0);
+    const out = this.engine.ctx.createBuffer(1, Math.max(1, n), this.sr);
     let o = 0;
     for (const c of this.chunks) {
       out.copyToChannel(c, 0, o);
