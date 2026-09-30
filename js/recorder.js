@@ -1,7 +1,7 @@
 // Microphone capture: raw PCM via an AudioWorklet (sample-accurate timing for
 // grading and playback alignment) plus live pitch frames.
-import { detectPitch } from './pitch.js';
-import { freqToMidi } from './music.js';
+import { detectPitch } from './pitch.js?v=20260930215851';
+import { freqToMidi } from './music.js?v=20260930215851';
 
 const CHUNK = 1024;
 const WINDOW = 2048;

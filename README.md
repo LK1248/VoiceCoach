@@ -7,6 +7,7 @@ A browser-based singing coach. No build step — plain HTML/CSS/ES modules.
 ## Modes
 
 - **Interval ID** — hear two notes, identify the interval (m2 … octave).
+- **Single Note** — *pitch alignment*: hear a note, sing it as many times as you like; each attempt is scored and graphed over the earlier ones. *Pitch following*: hold each note within tolerance for a set time to advance to the next; successes are counted per run. Notes come from a range (vertical slider) with per-note checkboxes.
 - **Interval Singing** — hear two notes, sing them back; live pitch tracking, per-note cents accuracy and steadiness, and reference-vs-take comparison playback.
 - Registers and Vocal Range — planned.
 
@@ -17,10 +18,16 @@ Settings: instrument (piano, guitars, recorded male/female voice with a selectab
 The microphone requires a secure origin (`https` or `localhost`), and ES modules require a server:
 
 ```bash
-python -m http.server 5317
+python tools/serve.py
 ```
 
-Then open http://localhost:5317.
+Then open http://localhost:5317. (`tools/serve.py` sends `Cache-Control: no-cache` so the browser never runs stale modules.)
+
+Before committing changes to `js/` or `css/`, stamp a new version so browsers and GitHub Pages don't mix cached old files with new ones:
+
+```bash
+python tools/stamp_version.py
+```
 
 ## Credits
 

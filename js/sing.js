@@ -1,15 +1,14 @@
 // Interval singing: hear two notes, sing them back, get graded on pitch
 // accuracy, and compare the recording against the reference.
-import { INTERVALS, midiToName, pickItem, median } from './music.js';
-import { settings, getRange, vowelsFor, vowelText } from './settings.js';
+import { INTERVALS, midiToName, pickItem } from './music.js?v=20260930215851';
+import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, fmtCents, noteCardHtml } from './grading.js?v=20260930215851';
+import { settings, getRange, vowelsFor, vowelText } from './settings.js?v=20260930215851';
 
 const $ = (id) => document.getElementById(id);
 const COUNT_IN_BEAT = 0.6; // seconds
 const VOICE_FRAMES = 3; // consecutive steady voiced frames (~70 ms) that count as "started singing"
 const VOICE_PREROLL = 0.08; // seconds kept before the detected onset
 const VOICE_TIMEOUT = 15; // seconds to wait for singing in detect mode
-const GRADE_FROM = 0.25; // ignore the first 25% of each window (note onset / glide)
-const GRADE_TO = 0.95;
 const freshStats = () => ({ attempts: 0, scoreSum: 0, passes: 0, per: {} });
 
 /**
@@ -18,37 +17,10 @@ const freshStats = () => ({ attempts: 0, scoreSum: 0, passes: 0, per: {} });
  * both notes so the sung *interval* must still be correct.
  */
 export function grade(frames, item, D, tol, octaveTolerant) {
-  const segs = [item.root, item.second].map((target, i) => {
-    const t0 = (i + GRADE_FROM) * D;
-    const t1 = (i + GRADE_TO) * D;
-    const win = frames.filter((f) => f.t >= t0 && f.t <= t1);
-    const raw = win.filter((f) => f.voiced).map((f) => (f.midi - target) * 100);
-    return { target, total: win.length, raw };
-  });
-
-  let shift = 0; // cents
-  if (octaveTolerant) {
-    const ref = segs[0].raw.length >= 3 ? segs[0].raw : segs[1].raw;
-    if (ref.length) shift = -1200 * Math.round(median(ref) / 1200);
-  }
-
-  const notes = segs.map(({ target, total, raw }) => {
-    const detected = raw.length >= 3 && raw.length >= 0.3 * total;
-    if (!detected) return { target, detected: false, score: 0, ok: false };
-    const cents = raw.map((c) => c + shift);
-    const med = median(cents);
-    const stability = cents.filter((c) => Math.abs(c - med) <= tol).length / cents.length;
-    const accuracy = Math.max(0, 100 - 2 * Math.max(0, Math.abs(med) - tol)); // -2 pts per cent beyond tolerance
-    return {
-      target,
-      detected: true,
-      cents: med,
-      stability,
-      score: Math.round(accuracy * (0.7 + 0.3 * stability)),
-      ok: Math.abs(med) <= tol,
-    };
-  });
-
+  const segs = [item.root, item.second].map((target, i) =>
+    segmentCents(frames, target, (i + GRADE_FROM) * D, (i + GRADE_TO) * D));
+  const shift = octaveTolerant ? octaveShift(segs[0].raw.length >= 3 ? segs[0].raw : segs[1].raw) : 0;
+  const notes = [item.root, item.second].map((target, i) => scoreNote(target, segs[i], tol, shift));
   return {
     notes,
     shift,
@@ -58,7 +30,6 @@ export function grade(frames, item, D, tol, octaveTolerant) {
   };
 }
 
-const fmtCents = (c) => `${c > 0 ? '+' : c < 0 ? '−' : '±'}${Math.abs(Math.round(c))}¢`;
 
 export class SingMode {
   constructor(engine, recorder, status) {
@@ -74,7 +45,6 @@ export class SingMode {
     this.anim = 0;
     this.stats = freshStats();
 
-    recorder.onFrame = (f) => this.onFrame(f);
     $('sgStart').onclick = () => this.run(true);
     $('sgRetry').onclick = () => this.run(false);
     $('sgHear').onclick = () => this.hearReference();
@@ -329,16 +299,7 @@ export class SingMode {
   renderResult() {
     const r = this.result;
     const tol = settings.tolerance;
-    const noteHtml = r.notes.map((n, i) => {
-      if (!n.detected) {
-        return `<div class="note no"><div class="line">Note ${i + 1} · target ${midiToName(n.target)}</div>
-          <div class="score">—</div><div class="line">No clear pitch detected. Sing louder or closer to the mic.</div></div>`;
-      }
-      const word = Math.abs(n.cents) <= tol ? 'on pitch' : n.cents > 0 ? 'sharp' : 'flat';
-      return `<div class="note ${n.ok ? 'ok' : 'no'}"><div class="line">Note ${i + 1} · target ${midiToName(n.target)}</div>
-        <div class="score">${fmtCents(n.cents)} <small>${word}</small></div>
-        <div class="line">steadiness ${Math.round(n.stability * 100)}% · score ${n.score}</div></div>`;
-    }).join('');
+    const noteHtml = r.notes.map((n, i) => noteCardHtml(n, `Note ${i + 1}`, tol)).join('');
 
     let intervalLine = '';
     if (r.intervalErr != null) {

@@ -4,13 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Voice Coach</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=20260930215851">
 </head>
 <body data-mode="identify">
   <header class="topbar">
     <div class="brand"><span class="logo">𝄞</span> Voice Coach</div>
     <nav class="tabs">
       <button class="tab active" data-mode="identify">Interval ID</button>
+      <button class="tab" data-mode="single">Single Note</button>
       <button class="tab" data-mode="sing">Interval Singing</button>
       <button class="tab" disabled title="Coming soon">Registers</button>
       <button class="tab" disabled title="Coming soon">Vocal Range</button>
@@ -24,13 +25,27 @@
         <select id="instrument"></select>
         <div id="loadStatus" class="hint"></div>
         <div id="vowelBox" class="sub">
-          <div class="vowel-row"><span class="field-label">Note 1 vowel</span><div class="seg" id="vowel1Seg"></div></div>
-          <div class="vowel-row"><span class="field-label">Note 2 vowel</span><div class="seg" id="vowel2Seg"></div></div>
+          <div class="vowel-row"><span class="field-label"><span data-only="identify sing">Note 1 vowel</span><span data-only="single">Vowel</span></span><div class="seg" id="vowel1Seg"></div></div>
+          <div class="vowel-row" data-only="identify sing"><span class="field-label">Note 2 vowel</span><div class="seg" id="vowel2Seg"></div></div>
           <div class="hint">A "ahh" · E "bear" · I "greed" · O "oh" · U "moon"</div>
         </div>
       </section>
 
-      <section>
+      <section data-only="single">
+        <h3>Exercise</h3>
+        <div class="seg">
+          <label title="Sing the same note as many times as you like; every attempt is scored"><input type="radio" name="singleMode" value="align"><span>Pitch alignment</span></label>
+          <label title="Hold each note in tune to move on to the next"><input type="radio" name="singleMode" value="follow"><span>Pitch following</span></label>
+        </div>
+      </section>
+
+      <section data-only="single">
+        <h3>Notes</h3>
+        <div class="hint">Drag the handles to set the range, then untick any notes to leave out.</div>
+        <div id="noteRange" class="note-range"></div>
+      </section>
+
+      <section data-only="identify sing">
         <h3>Intervals</h3>
         <div class="row-btns">
           <button class="small" data-preset="all">All</button>
@@ -40,7 +55,7 @@
         <div id="intervalList" class="checklist"></div>
       </section>
 
-      <section>
+      <section data-only="identify sing">
         <h3>Direction</h3>
         <div class="seg">
           <label><input type="radio" name="direction" value="asc"><span>↑ Ascending</span></label>
@@ -49,7 +64,7 @@
         </div>
       </section>
 
-      <section>
+      <section data-only="identify sing">
         <h3>Root note</h3>
         <select id="root"></select>
         <div id="rangeBox" class="sub">
@@ -68,15 +83,15 @@
         </label>
       </section>
 
-      <section data-only="sing">
+      <section data-only="sing single">
         <h3>Singing</h3>
-        <label class="check"><input type="checkbox" id="showInterval"> Show interval name while playing</label>
+        <label class="check" data-only="sing"><input type="checkbox" id="showInterval"> Show interval name while playing</label>
         <label class="check"><input type="checkbox" id="octaveTolerant"> Accept any octave</label>
         <label class="slider">Tolerance <output id="toleranceVal"></output>
           <input type="range" id="tolerance" min="10" max="100" step="5">
         </label>
-        <div class="field-label">Start singing</div>
-        <div class="seg">
+        <div class="field-label" data-only="sing">Start singing</div>
+        <div class="seg" data-only="sing">
           <label title="Three clicks, then sing"><input type="radio" name="singStart" value="countdown"><span>Count-in</span></label>
           <label title="Recording starts when you start singing"><input type="radio" name="singStart" value="detect"><span>Detect voice</span></label>
         </div>
@@ -105,6 +120,37 @@
         </div>
       </section>
 
+      <!-- Single note -->
+      <section id="view-single" class="view" hidden>
+        <div class="card exercise">
+          <div class="prompt" id="snPrompt"></div>
+          <div class="interval-label" id="snTarget">&nbsp;</div>
+          <div class="controls">
+            <button id="snNew" class="primary">▶ New note <kbd>N</kbd></button>
+            <button id="snHear" disabled>↻ Hear note <kbd>A</kbd></button>
+            <button id="snStop" disabled>■ Stop</button>
+          </div>
+          <div class="phase-row">
+            <div class="phase" id="snPhase">&nbsp;</div>
+            <div class="meter" title="Mic level"><div id="snLevel"></div></div>
+          </div>
+          <div id="snFollowBox" class="follow-box" hidden>
+            <div class="counter"><b id="snCounter">0</b><span>matched this run</span>
+              <button id="snResetRun" class="link">Reset run</button></div>
+            <div class="hold"><div class="hold-bar"><div id="snHoldFill"></div></div><span id="snHoldText"></span></div>
+            <label class="hold-setting" title="How long the note must be held in tune to count as a match">Hold for
+              <input type="range" id="holdTime" min="0.5" max="5" step="0.5"> <output id="holdTimeVal"></output>
+            </label>
+          </div>
+          <canvas id="snCanvas" class="pitch-canvas" height="260"></canvas>
+          <div id="snResults" class="results"></div>
+        </div>
+        <div class="card stats">
+          <div class="stats-head"><h3>Session</h3><button id="snResetStats" class="link">Reset</button></div>
+          <div id="snStats"></div>
+        </div>
+      </section>
+
       <!-- Interval singing -->
       <section id="view-sing" class="view" hidden>
         <div class="card exercise">
@@ -119,7 +165,7 @@
             <div class="phase" id="sgPhase">&nbsp;</div>
             <div class="meter" title="Mic level"><div id="sgLevel"></div></div>
           </div>
-          <canvas id="sgCanvas" height="260"></canvas>
+          <canvas id="sgCanvas" class="pitch-canvas" height="260"></canvas>
           <div id="sgResults" class="results"></div>
           <div class="controls compare" id="sgCompare" hidden>
             <span class="field-label">Compare:</span>
@@ -146,6 +192,6 @@
     <a href="https://github.com/gleitz/midi-js-soundfonts" target="_blank" rel="noopener">midi-js-soundfonts</a>.
   </footer>
 
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/main.js?v=20260930215851"></script>
 </body>
 </html>

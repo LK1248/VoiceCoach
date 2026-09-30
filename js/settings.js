@@ -1,6 +1,6 @@
 // Shared exercise settings, persisted in localStorage, bound to the sidebar UI.
-import { INTERVALS, midiToName } from './music.js';
-import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS } from './instruments.js';
+import { INTERVALS, midiToName } from './music.js?v=20260930215851';
+import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS } from './instruments.js?v=20260930215851';
 
 const KEY = 'voiceCoach.settings.v1';
 
@@ -16,6 +16,10 @@ const DEFAULTS = {
   showInterval: true,
   octaveTolerant: true,
   singStart: 'countdown', // Interval Singing: 'countdown' | 'detect' (start when singing is heard)
+  singleMode: 'align', // Single Note: 'align' (repeat attempts on one note) | 'follow' (hold to advance)
+  singleRange: null, // Single Note [lo, hi]; null = instrument default
+  singleAllowed: null, // Single Note: allowed MIDI notes within the range; null = all
+  holdTime: 2, // Single Note, pitch following: seconds to hold the note
   autoNext: false, // Interval ID: go to the next interval after a correct answer
   tolerance: 25, // cents
   singDur: 1.5, // seconds per sung note
@@ -62,6 +66,8 @@ export const vowelsInUse = () =>
   [settings.vowel1, settings.vowel2].includes('random') ? VOWELS.map((v) => v.key) : [...new Set([settings.vowel1, settings.vowel2])];
 
 export const getRange = () => settings.ranges[settings.instrument] || INSTRUMENTS[settings.instrument].range;
+
+export const settingChanged = (field) => changed(field);
 
 function changed(field) {
   try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch { /* storage unavailable */ }
@@ -123,7 +129,7 @@ export function initSettingsUI() {
   });
 
   // Radio groups
-  for (const key of ['direction', 'singStart']) {
+  for (const key of ['direction', 'singStart', 'singleMode']) {
     document.querySelectorAll(`input[name="${key}"]`).forEach((r) => {
       r.checked = r.value === settings[key];
       r.onchange = () => { settings[key] = r.value; changed(key); };
@@ -176,6 +182,7 @@ export function initSettingsUI() {
   bindSlider('noteDur', (v) => `${v.toFixed(1)} s`);
   bindSlider('tolerance', (v) => `±${v} cents`);
   bindSlider('singDur', (v) => `${v.toFixed(2)} s`);
+  bindSlider('holdTime', (v) => `${v.toFixed(1)} s`);
   bindCheck('showInterval');
   bindCheck('octaveTolerant');
   bindCheck('autoNext');

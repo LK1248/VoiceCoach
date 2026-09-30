@@ -1,9 +1,11 @@
-import { AudioEngine } from './audio.js';
-import { MicRecorder } from './recorder.js';
-import { INSTRUMENTS } from './instruments.js';
-import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js';
-import { IdentifyMode } from './identify.js';
-import { SingMode } from './sing.js';
+import { AudioEngine } from './audio.js?v=20260930215851';
+import { MicRecorder } from './recorder.js?v=20260930215851';
+import { INSTRUMENTS } from './instruments.js?v=20260930215851';
+import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20260930215851';
+import { IdentifyMode } from './identify.js?v=20260930215851';
+import { SingMode } from './sing.js?v=20260930215851';
+import { SingleMode } from './single.js?v=20260930215851';
+import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20260930215851';
 
 const engine = new AudioEngine();
 const recorder = new MicRecorder(engine);
@@ -19,10 +21,14 @@ const status = {
 };
 
 initSettingsUI();
+const noteRange = initNoteRangeUI(document.getElementById('noteRange'));
 const modes = {
   identify: new IdentifyMode(engine, status),
+  single: new SingleMode(engine, recorder, status),
   sing: new SingMode(engine, recorder, status),
 };
+// Mic frames go to whichever theme is showing.
+recorder.onFrame = (f) => modes[mode].onFrame?.(f);
 
 // Preload samples for the current instrument's random range in the background.
 let preloadToken = 0;
@@ -32,10 +38,15 @@ async function preloadRange() {
   loadStatus.classList.remove('warn');
   const def = INSTRUMENTS[inst];
   if (!def.sf && !def.vocalset) { loadStatus.textContent = 'Synthesized — no download needed.'; return; }
+  // Interval themes' range plus the Single Note range.
   const [lo, hi] = getRange();
+  const [sLo, sHi] = getSingleRange();
+  const midis = new Set();
+  for (let m = lo; m <= hi; m++) midis.add(m);
+  for (let m = sLo; m <= sHi; m++) midis.add(m);
   const notes = [];
   const vs = def.vocalset ? vowelsInUse() : [null];
-  for (let m = lo; m <= hi; m++) for (const v of vs) notes.push([m, v ?? undefined]);
+  for (const m of midis) for (const v of vs) notes.push([m, v ?? undefined]);
   const failed = await engine.preload(inst, notes, (done, fail, total) => {
     if (token === preloadToken) loadStatus.textContent = `Loading samples ${done + fail}/${total}…`;
   });
@@ -46,7 +57,9 @@ async function preloadRange() {
 preloadRange();
 
 onSettingsChange((field) => {
-  if (field === 'instrument' || field === 'range' || field === 'vowel') preloadRange();
+  if (['instrument', 'range', 'vowel', 'singleRange'].includes(field)) preloadRange();
+  if (field === 'instrument') noteRange.render(); // range follows the instrument until set
+  modes.single.onSettings(field);
   if (field === 'intervals') modes.identify.renderAnswers();
   modes.sing.onSettings(field);
 });
@@ -56,12 +69,15 @@ let mode = 'identify';
 document.querySelectorAll('.tab[data-mode]').forEach((tab) => {
   tab.onclick = () => {
     if (modes.sing.busy) return; // don't switch away mid-recording
+    if (tab.dataset.mode === mode) return;
+    modes[mode].deactivate?.();
     engine.stopAll();
     mode = tab.dataset.mode;
     document.body.dataset.mode = mode;
     document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t === tab));
     document.querySelectorAll('.view').forEach((v) => { v.hidden = v.id !== `view-${mode}`; });
     if (mode === 'sing') modes.sing.draw();
+    modes[mode].activate?.();
   };
 });
 

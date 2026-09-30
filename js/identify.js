@@ -1,6 +1,6 @@
 // Interval identification: hear two notes, pick the interval.
-import { INTERVALS, intervalBySemis, midiToName, pickItem } from './music.js';
-import { settings, getRange, vowelsFor, vowelText } from './settings.js';
+import { INTERVALS, intervalBySemis, midiToName, pickItem } from './music.js?v=20260930215851';
+import { settings, getRange, vowelsFor, vowelText } from './settings.js?v=20260930215851';
 
 const $ = (id) => document.getElementById(id);
 const AUTO_NEXT_DELAY = 1200; // ms to show a correct answer before moving on
