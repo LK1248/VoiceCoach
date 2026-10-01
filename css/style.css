@@ -169,6 +169,15 @@ main { min-width: 0; }
 .phase.live { color: var(--bad); }
 .meter { width: 120px; height: 8px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
 .meter > div { height: 100%; width: 0; background: var(--good); transition: width 60ms linear; }
+.spectrum-box { margin-top: 12px; }
+.spectrum-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px 16px; flex-wrap: wrap; margin-bottom: 6px; }
+.spectrum-head > .field-label { flex: 1 1 260px; }
+.noise-ctl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.noise-ctl .check { margin: 0; font-size: 13px; }
+.noise-ctl .check:has(input:disabled) { opacity: 0.5; cursor: default; }
+.noise-status { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.noise-status.warn { color: var(--warn); }
+canvas.spectrum-canvas { width: 100%; height: 240px; display: block; background: var(--panel-2); border-radius: 8px; }
 canvas.pitch-canvas { width: 100%; height: 260px; display: block; background: var(--panel-2); border-radius: 8px; }
 .results { margin-top: 14px; }
 .results .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 10px 0; }

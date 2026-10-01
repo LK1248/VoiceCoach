@@ -1,5 +1,5 @@
 // Pitch-over-time plotting on a canvas: semitone grid, target bands, traces.
-import { midiToName } from './music.js?v=20261001213017';
+import { midiToName } from './music.js?v=20261001224055';
 
 /**
  * Prepare a HiDPI canvas and draw the semitone grid for pitches [lo, hi] over

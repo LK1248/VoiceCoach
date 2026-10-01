@@ -1,7 +1,8 @@
 // Microphone capture: raw PCM via an AudioWorklet (sample-accurate timing for
 // grading and playback alignment) plus live pitch frames.
-import { detectPitch } from './pitch.js?v=20261001213017';
-import { freqToMidi } from './music.js?v=20261001213017';
+import { detectPitch } from './pitch.js?v=20261001224055';
+import { makeSpectrumAnalyser } from './audio.js?v=20261001224055';
+import { freqToMidi } from './music.js?v=20261001224055';
 
 const CHUNK = 1024;
 const WINDOW = 2048;
@@ -59,6 +60,19 @@ export class MicRecorder {
     const mute = ctx.createGain();
     mute.gain.value = 0; // keep the node pulled by the graph without monitoring the mic
     src.connect(this.node).connect(mute).connect(ctx.destination);
+    // Spectrum view feed: 4th-order Butterworth high-pass at 65 Hz (two biquads)
+    // to cut rumble and mains hum below the singing range. Display only;
+    // pitch detection and recordings use the unfiltered signal.
+    this.analyser = makeSpectrumAnalyser(ctx);
+    let feed = src;
+    for (const q of [0.541, 1.307]) {
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 65;
+      hp.Q.value = q;
+      feed = feed.connect(hp);
+    }
+    feed.connect(this.analyser);
     this.node.port.onmessage = (e) => this._chunk(e.data);
     this.ready = true;
   }

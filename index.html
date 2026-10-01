@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Voice Coach</title>
-  <link rel="stylesheet" href="css/style.css?v=20261001213017">
+  <link rel="stylesheet" href="css/style.css?v=20261001224055">
 </head>
 <body data-mode="identify">
   <header class="topbar">
@@ -150,6 +150,17 @@
             </label>
           </div>
           <canvas id="snCanvas" class="pitch-canvas" height="260"></canvas>
+          <div id="snSpectrumBox" class="spectrum-box">
+            <div class="spectrum-head">
+              <div class="field-label">Spectrum: first 4 peaks circled; dashed lines are the target's harmonics (H5 = a major third, two octaves up)</div>
+              <div class="noise-ctl">
+                <button id="snNoiseCal" class="small" title="Stay quiet for about 1.5 s while the room's background noise is measured">Calibrate</button>
+                <label class="check" title="Remove the measured room noise from the microphone spectrum"><input type="checkbox" id="snNoiseOn" disabled> Subtract room noise</label>
+                <span id="snNoiseStatus" class="noise-status">not calibrated</span>
+              </div>
+            </div>
+            <canvas id="snSpectrum" class="spectrum-canvas"></canvas>
+          </div>
           <div id="snResults" class="results"></div>
         </div>
         <div class="card stats">
@@ -199,6 +210,6 @@
     <a href="https://github.com/gleitz/midi-js-soundfonts" target="_blank" rel="noopener">midi-js-soundfonts</a>.
   </footer>
 
-  <script type="module" src="js/main.js?v=20261001213017"></script>
+  <script type="module" src="js/main.js?v=20261001224055"></script>
 </body>
 </html>

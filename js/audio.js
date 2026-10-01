@@ -1,6 +1,6 @@
 // Audio playback: sampled instruments (loaded on demand) with a synth fallback.
-import { INSTRUMENTS } from './instruments.js?v=20261001213017';
-import { midiToName, midiToFreq } from './music.js?v=20261001213017';
+import { INSTRUMENTS } from './instruments.js?v=20261001224055';
+import { midiToName, midiToFreq } from './music.js?v=20261001224055';
 
 const SF_BASE = 'https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM';
 const VOICE_BASE = 'samples/voices/';
@@ -9,6 +9,16 @@ const VOICE_BASE = 'samples/voices/';
 // start of the next one.
 const KEEPALIVE_RMS = 0.001;
 const KEEPALIVE_CUTOFF = 120; // Hz
+
+/** High-resolution analyser for the spectrum view (~3 Hz bins at 48 kHz, ~0.34 s window). */
+export function makeSpectrumAnalyser(ctx) {
+  const a = ctx.createAnalyser();
+  a.fftSize = 16384;
+  a.smoothingTimeConstant = 0.3; // the long window already smooths over time
+  a.minDecibels = -140;
+  a.maxDecibels = 0;
+  return a;
+}
 
 export class AudioEngine {
   constructor() {
@@ -31,6 +41,9 @@ export class AudioEngine {
       this.master = this.ctx.createGain();
       this.master.gain.value = 0.9;
       this.master.connect(this.ctx.destination);
+      // Spectrum tap on everything played (not the keep-alive noise).
+      this.analyser = makeSpectrumAnalyser(this.ctx);
+      this.master.connect(this.analyser);
       this.applyKeepAlive();
     }
     if (this.ctx.state === 'suspended') this.ctx.resume();
