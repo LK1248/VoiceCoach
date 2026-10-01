@@ -1,6 +1,6 @@
 // Shared exercise settings, persisted in localStorage, bound to the sidebar UI.
-import { INTERVALS, midiToName } from './music.js?v=20260930221223';
-import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, instrumentRange } from './instruments.js?v=20260930221223';
+import { INTERVALS, midiToName } from './music.js?v=20261001213017';
+import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, instrumentRange } from './instruments.js?v=20261001213017';
 
 const KEY = 'voiceCoach.settings.v1';
 
@@ -20,7 +20,8 @@ const DEFAULTS = {
   singleRange: null, // Single Note [lo, hi]; null = instrument default
   singleAllowed: null, // Single Note: allowed MIDI notes within the range; null = all
   holdTime: 2, // Single Note, pitch following: seconds to hold the note
-  autoNext: false, // Interval ID: go to the next interval after a correct answer
+  autoNext: false,
+  keepAlive: true, // play inaudible noise so Bluetooth audio doesn't power down between notes // Interval ID: go to the next interval after a correct answer
   tolerance: 25, // cents
   singDur: 1.5, // seconds per sung note
 };
@@ -203,6 +204,7 @@ export function initSettingsUI() {
   bindCheck('showInterval');
   bindCheck('octaveTolerant');
   bindCheck('autoNext');
+  bindCheck('keepAlive');
 }
 
 function bindSlider(key, fmt) {

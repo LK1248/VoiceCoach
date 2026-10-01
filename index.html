@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Voice Coach</title>
-  <link rel="stylesheet" href="css/style.css?v=20260930221223">
+  <link rel="stylesheet" href="css/style.css?v=20261001213017">
 </head>
 <body data-mode="identify">
   <header class="topbar">
@@ -99,6 +99,13 @@
           <input type="range" id="singDur" min="1" max="4" step="0.25">
         </label>
       </section>
+
+      <section>
+        <h3>Audio device</h3>
+        <label class="check" title="Plays a very quiet, inaudible noise between notes so wireless headphones don't power down and clip the start of the next note">
+          <input type="checkbox" id="keepAlive"> Keep Bluetooth audio awake</label>
+        <div class="hint">Prevents wireless headphones from cutting off note starts. Bluetooth delay is compensated automatically where the browser reports it.</div>
+      </section>
     </aside>
 
     <main>
@@ -192,6 +199,6 @@
     <a href="https://github.com/gleitz/midi-js-soundfonts" target="_blank" rel="noopener">midi-js-soundfonts</a>.
   </footer>
 
-  <script type="module" src="js/main.js?v=20260930221223"></script>
+  <script type="module" src="js/main.js?v=20261001213017"></script>
 </body>
 </html>

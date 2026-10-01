@@ -1,7 +1,7 @@
 // Microphone capture: raw PCM via an AudioWorklet (sample-accurate timing for
 // grading and playback alignment) plus live pitch frames.
-import { detectPitch } from './pitch.js?v=20260930221223';
-import { freqToMidi } from './music.js?v=20260930221223';
+import { detectPitch } from './pitch.js?v=20261001213017';
+import { freqToMidi } from './music.js?v=20261001213017';
 
 const CHUNK = 1024;
 const WINDOW = 2048;
@@ -44,6 +44,8 @@ export class MicRecorder {
       throw new Error('Microphone access is unavailable. Open the app via http://localhost or https.');
     }
     const ctx = this.engine.ensure();
+    // iOS Safari: route as a play-and-record session (better with headsets).
+    if (navigator.audioSession) navigator.audioSession.type = 'play-and-record';
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
     });
@@ -84,6 +86,11 @@ export class MicRecorder {
     this.recentFrames.push(frame);
     while (this.recentFrames[0].abs < keepFrom) this.recentFrames.shift();
     this.onFrame?.(frame);
+  }
+
+  /** Seconds the mic signal lags reality (e.g. Bluetooth), where the browser reports it. */
+  get inputLatency() {
+    return this.stream?.getAudioTracks()[0]?.getSettings?.().latency || 0;
   }
 
   get elapsed() {

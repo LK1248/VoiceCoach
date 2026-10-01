@@ -1,11 +1,11 @@
-import { AudioEngine } from './audio.js?v=20260930221223';
-import { MicRecorder } from './recorder.js?v=20260930221223';
-import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20260930221223';
-import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20260930221223';
-import { IdentifyMode } from './identify.js?v=20260930221223';
-import { SingMode } from './sing.js?v=20260930221223';
-import { SingleMode } from './single.js?v=20260930221223';
-import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20260930221223';
+import { AudioEngine } from './audio.js?v=20261001213017';
+import { MicRecorder } from './recorder.js?v=20261001213017';
+import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261001213017';
+import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20261001213017';
+import { IdentifyMode } from './identify.js?v=20261001213017';
+import { SingMode } from './sing.js?v=20261001213017';
+import { SingleMode } from './single.js?v=20261001213017';
+import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261001213017';
 
 const engine = new AudioEngine();
 const recorder = new MicRecorder(engine);
@@ -27,10 +27,12 @@ async function previewNote(midi) {
   engine.stopAll();
   const r = await engine.playSequence(inst, [midi], { dur: 1, vowels: [vowel] });
   status.fallback(r.fallback);
-  modes.single.ignoreMicUntil(r.end + 0.3); // the mic mustn't take the preview for singing
+  // The mic mustn't take the preview (or its delayed echo) for singing.
+  modes.single.ignoreMicUntil(r.end + 0.3 + engine.outputLatency + recorder.inputLatency);
 }
 
 initSettingsUI();
+engine.setKeepAlive(settings.keepAlive);
 const noteRange = initNoteRangeUI(document.getElementById('noteRange'), { onHear: previewNote });
 const modes = {
   identify: new IdentifyMode(engine, status),
@@ -69,6 +71,7 @@ preloadRange();
 
 onSettingsChange((field) => {
   if (['instrument', 'range', 'vowel', 'singleRange'].includes(field)) preloadRange();
+  if (field === 'keepAlive') engine.setKeepAlive(settings.keepAlive);
   if (field === 'instrument') noteRange.render(); // range follows the instrument until set
   modes.single.onSettings(field);
   if (field === 'intervals') modes.identify.renderAnswers();

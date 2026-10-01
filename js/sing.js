@@ -1,8 +1,8 @@
 // Interval singing: hear two notes, sing them back, get graded on pitch
 // accuracy, and compare the recording against the reference.
-import { INTERVALS, midiToName, pickItem } from './music.js?v=20260930221223';
-import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, fmtCents, noteCardHtml } from './grading.js?v=20260930221223';
-import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20260930221223';
+import { INTERVALS, midiToName, pickItem } from './music.js?v=20261001213017';
+import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, fmtCents, noteCardHtml } from './grading.js?v=20261001213017';
+import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261001213017';
 
 const $ = (id) => document.getElementById(id);
 const COUNT_IN_BEAT = 0.6; // seconds
@@ -129,7 +129,9 @@ export class SingMode {
       this.draw();
       // Reference notes have exactly the length of the sung windows.
       const r = await this.playReference();
-      await this.engine.waitUntil(r.end + 0.35);
+      // Round-trip device delay (e.g. Bluetooth): when the user hears a sound, and when the mic delivers it.
+      const lag = this.engine.outputLatency + this.recorder.inputLatency;
+      await this.engine.waitUntil(r.end + 0.35 + lag);
 
       if (settings.singStart === 'detect') {
         const name = settings.showInterval ? ` (${midiToName(this.item.root)})` : '';
@@ -144,7 +146,8 @@ export class SingMode {
           await this.engine.waitUntil(t0 + i * COUNT_IN_BEAT);
           this.setPhase(`Get ready… ${3 - i}`);
         }
-        await this.engine.waitUntil(t0 + 3 * COUNT_IN_BEAT);
+        // Start the take when the mic delivers audio from the moment the user *hears* the downbeat.
+        await this.engine.waitUntil(t0 + 3 * COUNT_IN_BEAT + lag);
         this.frames = this.recorder.start();
       }
       this.recording = true;

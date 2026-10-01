@@ -1,9 +1,14 @@
 // Audio playback: sampled instruments (loaded on demand) with a synth fallback.
-import { INSTRUMENTS } from './instruments.js?v=20260930221223';
-import { midiToName, midiToFreq } from './music.js?v=20260930221223';
+import { INSTRUMENTS } from './instruments.js?v=20261001213017';
+import { midiToName, midiToFreq } from './music.js?v=20261001213017';
 
 const SF_BASE = 'https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM';
 const VOICE_BASE = 'samples/voices/';
+// Keep-alive: low-passed noise at about −60 dBFS. Inaudible, but never digital
+// silence, so Bluetooth headsets don't power down between notes and clip the
+// start of the next one.
+const KEEPALIVE_RMS = 0.001;
+const KEEPALIVE_CUTOFF = 120; // Hz
 
 export class AudioEngine {
   constructor() {
@@ -12,17 +17,65 @@ export class AudioEngine {
     this.buffers = new Map(); // url -> Promise<AudioBuffer>
     this.manifest = null; // Promise of samples/voices/manifest.json
     this.active = new Set();
+    this.keepAliveOn = false;
+    this.keepAliveGain = null;
+    document.addEventListener('visibilitychange', () => this.applyKeepAlive());
   }
 
   ensure() {
     if (!this.ctx) {
+      // iOS Safari: play even with the ringer's silent switch on (switched to
+      // play-and-record once the mic is used).
+      if (navigator.audioSession && navigator.audioSession.type === 'auto') navigator.audioSession.type = 'playback';
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       this.master = this.ctx.createGain();
       this.master.gain.value = 0.9;
       this.master.connect(this.ctx.destination);
+      this.applyKeepAlive();
     }
     if (this.ctx.state === 'suspended') this.ctx.resume();
     return this.ctx;
+  }
+
+  /**
+   * Seconds between a sound's scheduled time and when it reaches the listener,
+   * including Bluetooth delay where the browser reports it.
+   */
+  get outputLatency() {
+    const c = this.ctx;
+    return c ? (c.outputLatency || 0) + (c.baseLatency || 0) : 0;
+  }
+
+  setKeepAlive(on) {
+    this.keepAliveOn = on;
+    this.applyKeepAlive();
+  }
+
+  /** Run the keep-alive noise while enabled and the page is visible. */
+  applyKeepAlive() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    if (!this.keepAliveGain) {
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = KEEPALIVE_CUTOFF;
+      lp.Q.value = 0.5;
+      this.keepAliveGain = ctx.createGain();
+      this.keepAliveGain.gain.value = 0;
+      // Bypasses `master` and isn't tracked, so stopAll() never silences it.
+      src.connect(lp).connect(this.keepAliveGain).connect(ctx.destination);
+      src.start();
+      // White noise (RMS 1/√3) through the low-pass keeps roughly √(1.2·fc / (sr/2)) of its RMS.
+      this.keepAliveLevel = KEEPALIVE_RMS / ((1 / Math.sqrt(3)) * Math.sqrt((1.2 * KEEPALIVE_CUTOFF) / (ctx.sampleRate / 2)));
+    }
+    const on = this.keepAliveOn && !document.hidden;
+    this.keepAliveGain.gain.setTargetAtTime(on ? this.keepAliveLevel : 0, ctx.currentTime, 0.05);
   }
 
   fetchBuffer(url) {
