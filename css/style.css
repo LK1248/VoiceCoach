@@ -253,3 +253,7 @@ canvas.pitch-canvas { width: 100%; height: 260px; display: block; background: va
 .switches li.possible b { color: var(--warn); }
 canvas.summary-canvas { width: 100%; height: 240px; display: block; margin-top: 10px; }
 .voice-type { margin-top: 8px; font-size: 14px; }
+
+/* Interval ID spectrum */
+.bright-line { margin-top: 6px; font-size: 14px; }
+.bright-line .clash { display: block; color: var(--warn); margin-top: 2px; }

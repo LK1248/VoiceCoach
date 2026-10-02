@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Voice Coach</title>
-  <link rel="stylesheet" href="css/style.css?v=20261002151213">
+  <link rel="stylesheet" href="css/style.css?v=20261002154844">
 </head>
 <body data-mode="identify">
   <header class="topbar">
@@ -132,6 +132,17 @@
           </div>
           <div class="answers" id="idAnswers"></div>
           <div class="feedback" id="idFeedback"></div>
+          <div class="spectrum-box">
+            <div class="spectrum-head">
+              <div class="field-label">Spectrum of the played notes: note 1 pale, note 2 solid.
+                Frequencies and the brightness readout are revealed after you answer.</div>
+              <div class="noise-ctl">
+                <label class="check" title="Show the raw analysis: no smoothing between peaks, no below-f0 cut"><input type="checkbox" id="idRaw"> Unfiltered</label>
+              </div>
+            </div>
+            <canvas id="idSpectrum" class="spectrum-canvas"></canvas>
+            <div id="idBright" class="line bright-line"></div>
+          </div>
         </div>
         <div class="card stats">
           <div class="stats-head"><h3>Session</h3><button id="idResetStats" class="link">Reset</button></div>
@@ -261,6 +272,6 @@
     <a href="https://github.com/gleitz/midi-js-soundfonts" target="_blank" rel="noopener">midi-js-soundfonts</a>.
   </footer>
 
-  <script type="module" src="js/main.js?v=20261002151213"></script>
+  <script type="module" src="js/main.js?v=20261002154844"></script>
 </body>
 </html>

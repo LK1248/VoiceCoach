@@ -1,6 +1,6 @@
 // Live spectrum (log frequency × dB) with the first spectral peaks marked and
 // the target note's harmonics as guides. Used by Single Note → Pitch alignment.
-import { midiToName, freqToMidi } from './music.js?v=20261002151213';
+import { midiToName, freqToMidi } from './music.js?v=20261002154844';
 
 const FMIN = 50;
 const FMAX = 8000;
@@ -96,7 +96,24 @@ function peakIndices(s, { count = Infinity, prominence = PEAK_PROMINENCE_DB, ran
  * first: [{ freq, db }]. Each frequency is refined on the raw FFT bins.
  */
 export function findPeaks(s, raw, binHz, { count = PEAKS, minFreq = FMIN } = {}) {
-  return peakIndices(s, { count, minFreq }).map((i) => ({ freq: refineOnBins(raw, binHz, LOG_FREQS[i]), db: s[i] }));
+  // `raw` (FFT bins) refines the frequency; without it (averaged spectra) the grid frequency is used.
+  return peakIndices(s, { count, minFreq }).map((i) => ({ freq: raw ? refineOnBins(raw, binHz, LOG_FREQS[i]) : LOG_FREQS[i], db: s[i] }));
+}
+
+/**
+ * Spectral centroid ("brightness") in Hz of a log-grid dB spectrum above `minFreq`:
+ * the power-weighted mean frequency (each grid point stands for a band proportional to f).
+ */
+export function spectralCentroid(s, minFreq = FMIN) {
+  let num = 0;
+  let den = 0;
+  for (let i = firstIndexAbove(minFreq); i < s.length; i++) {
+    const f = LOG_FREQS[i];
+    const w = 10 ** (s[i] / 10) * f; // power × bandwidth (∝ f)
+    num += w * f;
+    den += w;
+  }
+  return den ? num / den : null;
 }
 
 /** First log-grid index at or above f. */
@@ -161,7 +178,10 @@ function refineOnBins(raw, binHz, f) {
  * Draw the spectrum. `live` and `ghost` are log-grid dB arrays (either may be null).
  * `target` (MIDI) adds dashed guides at its harmonics.
  */
-export function drawSpectrum(canvas, { live, ghost, noise, target, sourceLabel, peaks, minFreq }) {
+export function drawSpectrum(canvas, {
+  live, ghost, noise, target, sourceLabel, peaks, minFreq,
+  ghostLabel = 'pale: reference (last played)', hideFreqLabels = false, hidePeakLegend = false,
+}) {
   const dpr = window.devicePixelRatio || 1;
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
@@ -192,9 +212,9 @@ export function drawSpectrum(canvas, { live, ghost, noise, target, sourceLabel, 
   g.textAlign = 'center';
   for (const f of [50, 100, 200, 500, 1000, 2000, 5000]) {
     g.beginPath(); g.moveTo(x(f), padT); g.lineTo(x(f), h - padB); g.stroke();
-    g.fillText(f >= 1000 ? `${f / 1000}k` : `${f}`, x(f), h - 5);
+    if (!hideFreqLabels) g.fillText(f >= 1000 ? `${f / 1000}k` : `${f}`, x(f), h - 5);
   }
-  g.fillText('Hz', w - padR - 8, h - 5);
+  if (!hideFreqLabels) g.fillText('Hz', w - padR - 8, h - 5);
   g.textAlign = 'right';
   g.textBaseline = 'middle';
   for (let db = dbBot; db <= dbTop; db += 10) {
@@ -284,18 +304,21 @@ export function drawSpectrum(canvas, { live, ghost, noise, target, sourceLabel, 
       lines.push(`${i + 1}  ${Math.round(p.freq)} Hz  ${midiToName(Math.round(m))} ${cents >= 0 ? '+' : '−'}${Math.abs(cents)}¢${mult}`);
     });
     g.font = '11px system-ui, sans-serif';
-    const lw = Math.max(...lines.map((l) => g.measureText(l).width)) + 14;
+    if (hidePeakLegend) lines.length = 0; // circles stay; frequencies/notes would give the answer away
+    const lw = lines.length ? Math.max(...lines.map((l) => g.measureText(l).width)) + 14 : 0;
     const lh = 15;
     const bx = w - padR - lw - 4, by = padT + 4;
-    g.fillStyle = col('--panel');
-    g.globalAlpha = 0.9;
-    g.fillRect(bx, by, lw, lines.length * lh + 6);
-    g.globalAlpha = 1;
-    g.strokeStyle = col('--border');
-    g.lineWidth = 1;
-    g.strokeRect(bx + 0.5, by + 0.5, lw - 1, lines.length * lh + 5);
-    g.fillStyle = col('--text');
-    lines.forEach((l, i) => g.fillText(l, bx + 7, by + 3 + lh / 2 + i * lh));
+    if (lines.length) {
+      g.fillStyle = col('--panel');
+      g.globalAlpha = 0.9;
+      g.fillRect(bx, by, lw, lines.length * lh + 6);
+      g.globalAlpha = 1;
+      g.strokeStyle = col('--border');
+      g.lineWidth = 1;
+      g.strokeRect(bx + 0.5, by + 0.5, lw - 1, lines.length * lh + 5);
+      g.fillStyle = col('--text');
+      lines.forEach((l, i) => g.fillText(l, bx + 7, by + 3 + lh / 2 + i * lh));
+    }
   }
 
   // Legend
@@ -305,6 +328,6 @@ export function drawSpectrum(canvas, { live, ghost, noise, target, sourceLabel, 
   g.fillText(sourceLabel || '', padL + 4, padT + 12);
   g.fillStyle = col('--muted');
   let ly = padT + 26;
-  if (ghost) { g.fillText('pale: reference (last played)', padL + 4, ly); ly += 14; }
+  if (ghost) { g.fillText(ghostLabel, padL + 4, ly); ly += 14; }
   if (noise) g.fillText('dotted: room noise (subtracted)', padL + 4, ly);
 }

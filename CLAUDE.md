@@ -24,6 +24,7 @@ Live: https://lk1248.github.io/VoiceCoach/ (GitHub Pages from `main`, repo `LK12
   depend on chunk alignment.
 - The browser pane is usually hidden during tests → `requestAnimationFrame` doesn't fire.
   Anything that must run during recording is driven by mic frames, not rAF.
+- `window.voiceCoach = { modes, engine, recorder }` exposes app internals for browser tests.
 - The mic can't be used in the preview pane; tests fake `navigator.mediaDevices.getUserMedia`
   with an AudioContext → MediaStreamDestination (oscillators, or a WAV buffer source).
 
