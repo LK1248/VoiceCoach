@@ -1,9 +1,9 @@
 // Interval identification: hear two notes, pick the interval.
-import { INTERVALS, intervalBySemis, midiToName, pickItem } from './music.js?v=20261002164412';
+import { INTERVALS, intervalBySemis, midiToName, pickItem } from './music.js?v=20261002164634';
 // (no room-noise controls in this tab: the spectrum is the app's own playback)
-import { makeSpectrumAnalyser } from './audio.js?v=20261002164412';
-import { LOG_FREQS, logSpectrum, findPeaks, cleanSpectrum, spectralCentroid, drawSpectrum } from './spectrum.js?v=20261002164412';
-import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261002164412';
+import { makeSpectrumAnalyser } from './audio.js?v=20261002164634';
+import { LOG_FREQS, logSpectrum, findPeaks, cleanSpectrum, spectralCentroid, drawSpectrum } from './spectrum.js?v=20261002164634';
+import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261002164634';
 
 const $ = (id) => document.getElementById(id);
 const AUTO_NEXT_DELAY = 1200; // ms to show a correct answer before moving on

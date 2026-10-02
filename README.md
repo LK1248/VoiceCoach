@@ -12,7 +12,7 @@ A browser-based singing coach. No build step — plain HTML/CSS/ES modules.
 - **Vocal Range** — siren up and down in a chosen register (Chest, Head, Falsetto, Mix; Whistle, Fry) on a vowel, nasal "ng" or lip trill. Measures full range, usable range (extremes held ~0.5 s) and the range within the register; marks register switches (pitch cracks / sudden H1–H2 changes) as crack, abrupt or gradual, with the up/down gap; compares the session's range with conventional voice types.
 - Registers — planned.
 
-Settings: instrument (piano, guitars, recorded male/female voice with a selectable vowel per note, synth tone (triangle), pure tone (sine), or random), active intervals, direction, fixed or random root with a per-instrument range.
+Settings: instrument (piano, guitars, recorded male/female voice with a selectable vowel per note, synth tones (triangle, square, sawtooth), pure tone (sine), or random), active intervals, direction, fixed or random root with a per-instrument range.
 
 ## Run locally
 
