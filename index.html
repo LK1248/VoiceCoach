@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Voice Coach</title>
-  <link rel="stylesheet" href="css/style.css?v=20261001224055">
+  <link rel="stylesheet" href="css/style.css?v=20261002151213">
 </head>
 <body data-mode="identify">
   <header class="topbar">
@@ -14,13 +14,13 @@
       <button class="tab" data-mode="single">Single Note</button>
       <button class="tab" data-mode="sing">Interval Singing</button>
       <button class="tab" disabled title="Coming soon">Registers</button>
-      <button class="tab" disabled title="Coming soon">Vocal Range</button>
+      <button class="tab" data-mode="range">Vocal Range</button>
     </nav>
   </header>
 
   <div class="layout">
     <aside class="settings">
-      <section>
+      <section data-only="identify single sing">
         <h3>Instrument</h3>
         <select id="instrument"></select>
         <div id="loadStatus" class="hint"></div>
@@ -28,6 +28,18 @@
           <div class="vowel-row"><span class="field-label"><span data-only="identify sing">Note 1 vowel</span><span data-only="single">Vowel</span></span><div class="seg" id="vowel1Seg"></div></div>
           <div class="vowel-row" data-only="identify sing"><span class="field-label">Note 2 vowel</span><div class="seg" id="vowel2Seg"></div></div>
           <div class="hint">A "ahh" · E "bear" · I "greed" · O "oh" · U "moon"</div>
+        </div>
+      </section>
+
+      <section data-only="range">
+        <h3>Siren</h3>
+        <div class="field-label">Register</div>
+        <select id="rangeRegister"></select>
+        <div class="field-label siren-on">Siren on</div>
+        <div class="seg">
+          <label title="Open vowel (ah / oo)"><input type="radio" name="sirenStyle" value="vowel"><span>Vowel</span></label>
+          <label title="Hum on ng"><input type="radio" name="sirenStyle" value="nasal"><span>Nasal "ng"</span></label>
+          <label title="Lip trill (brr)"><input type="radio" name="sirenStyle" value="trill"><span>Lip trill</span></label>
         </div>
       </section>
 
@@ -157,6 +169,7 @@
                 <button id="snNoiseCal" class="small" title="Stay quiet for about 1.5 s while the room's background noise is measured">Calibrate</button>
                 <label class="check" title="Remove the measured room noise from the microphone spectrum"><input type="checkbox" id="snNoiseOn" disabled> Subtract room noise</label>
                 <span id="snNoiseStatus" class="noise-status">not calibrated</span>
+                <label class="check" title="Show the raw analysis: no smoothing between peaks, no below-f0 cut"><input type="checkbox" id="snRaw"> Unfiltered</label>
               </div>
             </div>
             <canvas id="snSpectrum" class="spectrum-canvas"></canvas>
@@ -166,6 +179,44 @@
         <div class="card stats">
           <div class="stats-head"><h3>Session</h3><button id="snResetStats" class="link">Reset</button></div>
           <div id="snStats"></div>
+        </div>
+      </section>
+
+      <!-- Vocal range -->
+      <section id="view-range" class="view" hidden>
+        <div class="card exercise">
+          <div class="prompt" id="rgPrompt"></div>
+          <div class="controls">
+            <button id="rgStart" class="primary">▶ Start siren <kbd>N</kbd></button>
+            <span id="rgTopHeld" class="held-box">○ Top held</span>
+            <span id="rgBottomHeld" class="held-box">○ Bottom held</span>
+            <button id="rgPlay" class="small save-take" hidden title="Play the siren back; the cursor and spectrum follow along">▶ Play take</button>
+            <button id="rgSave" class="small" hidden title="Download this siren as a WAV file">⬇ Save recording</button>
+          </div>
+          <div class="phase-row">
+            <div class="phase" id="rgPhase">&nbsp;</div>
+            <div class="meter" title="Mic level"><div id="rgLevel"></div></div>
+          </div>
+          <canvas id="rgCanvas" class="pitch-canvas" height="260"></canvas>
+          <div class="spectrum-box">
+            <div class="spectrum-head">
+              <div class="field-label">Spectrum: live while you sing; afterwards hover over (or tap) the pitch graph, or play the take, to inspect any moment.
+                Dashed lines are the harmonics of the sung note; the first 4 peaks are circled.</div>
+              <div class="noise-ctl">
+                <button id="rgNoiseCal" class="small" title="Stay quiet for about 2 s while the room's background noise is measured">Calibrate</button>
+                <label class="check" title="Remove the measured room noise from the microphone spectrum"><input type="checkbox" id="rgNoiseOn" disabled> Subtract room noise</label>
+                <span id="rgNoiseStatus" class="noise-status">not calibrated</span>
+                <label class="check" title="Show the raw analysis: no smoothing between peaks, no below-f0 cut"><input type="checkbox" id="rgRaw"> Unfiltered</label>
+              </div>
+            </div>
+            <canvas id="rgSpectrum" class="spectrum-canvas"></canvas>
+          </div>
+          <div id="rgResults" class="results"></div>
+        </div>
+        <div class="card stats">
+          <div class="stats-head"><h3>Your range (this session)</h3><button id="rgClear" class="link">Clear</button></div>
+          <canvas id="rgSummary" class="summary-canvas"></canvas>
+          <div id="rgVoiceType" class="voice-type"></div>
         </div>
       </section>
 
@@ -210,6 +261,6 @@
     <a href="https://github.com/gleitz/midi-js-soundfonts" target="_blank" rel="noopener">midi-js-soundfonts</a>.
   </footer>
 
-  <script type="module" src="js/main.js?v=20261001224055"></script>
+  <script type="module" src="js/main.js?v=20261002151213"></script>
 </body>
 </html>

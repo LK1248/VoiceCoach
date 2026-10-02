@@ -1,6 +1,6 @@
 // Live spectrum (log frequency × dB) with the first spectral peaks marked and
 // the target note's harmonics as guides. Used by Single Note → Pitch alignment.
-import { midiToName, freqToMidi } from './music.js?v=20261001224055';
+import { midiToName, freqToMidi } from './music.js?v=20261002151213';
 
 const FMIN = 50;
 const FMAX = 8000;
@@ -18,11 +18,14 @@ const PEAK_PROMINENCE_DB = 15; // ...and rise this far above the valleys either 
 const PEAK_RANGE_DB = 40; // ignore peaks more than this far below the loudest
 const PEAK_MIN_DB = -85; // ignore peaks quieter than this (silence / room noise)
 const HARMONICS = 8;
+const DB_TOP = -20; // fixed level axis (dBFS)
+const DB_BOT = -120;
 // Display smoothing: baseline averaged over ±1/6 octave (two passes); peaks
 // kept at full detail if they pass these (looser) criteria.
 const BASELINE_HALF_POINTS = PPO / 6;
-const DISPLAY_PEAK_PROMINENCE_DB = 10;
-const DISPLAY_PEAK_RANGE_DB = 50;
+const DISPLAY_PEAK_PROMINENCE_DB = 6;
+const DISPLAY_PEAK_MIN_DB = -120; // display keeps weak harmonics that the circled-peak search ignores
+const DISPLAY_PEAK_RANGE_DB = 60; // weak upper harmonics (35–55 dB down in head voice/falsetto) stay visible
 
 /** Centre frequencies of the log grid, FMIN..FMAX. */
 export const LOG_FREQS = Float32Array.from(
@@ -63,12 +66,12 @@ export function logSpectrum(db, binHz) {
  * Indices of prominent peaks in a log-grid spectrum, lowest frequency first.
  * Defaults are the strict criteria used for the circled peaks.
  */
-function peakIndices(s, { count = Infinity, prominence = PEAK_PROMINENCE_DB, range = PEAK_RANGE_DB, minFreq = FMIN } = {}) {
+function peakIndices(s, { count = Infinity, prominence = PEAK_PROMINENCE_DB, range = PEAK_RANGE_DB, minFreq = FMIN, minDb = PEAK_MIN_DB } = {}) {
   const n = s.length;
   const start = Math.max(1, firstIndexAbove(minFreq));
   let top = -Infinity;
   for (let i = start; i < n; i++) top = Math.max(top, s[i]);
-  const floor = Math.max(top - range, PEAK_MIN_DB);
+  const floor = Math.max(top - range, minDb);
   const k = Math.round(PEAK_HALF_WIDTH_CENTS / CENTS_PER_POINT);
   const wv = Math.round(VALLEY_WINDOW_CENTS / CENTS_PER_POINT);
   const found = [];
@@ -119,7 +122,7 @@ function movingAverage(s, half) {
 export function cleanSpectrum(s, minFreq = FMIN) {
   const base = movingAverage(movingAverage(s, BASELINE_HALF_POINTS), BASELINE_HALF_POINTS);
   const out = Float32Array.from(base);
-  for (const p of peakIndices(s, { prominence: DISPLAY_PEAK_PROMINENCE_DB, range: DISPLAY_PEAK_RANGE_DB, minFreq })) {
+  for (const p of peakIndices(s, { prominence: DISPLAY_PEAK_PROMINENCE_DB, range: DISPLAY_PEAK_RANGE_DB, minFreq, minDb: DISPLAY_PEAK_MIN_DB })) {
     if (s[p] <= base[p]) continue;
     for (let i = p; i >= 0 && s[i] > base[i]; i--) out[i] = s[i];
     for (let i = p + 1; i < s.length && s[i] > base[i]; i++) out[i] = s[i];
@@ -177,14 +180,9 @@ export function drawSpectrum(canvas, { live, ghost, noise, target, sourceLabel, 
   const padL = 42, padR = 10, padT = 22, padB = 20;
   const x = (f) => padL + (Math.log(f / FMIN) / Math.log(FMAX / FMIN)) * (w - padL - padR);
 
-  // Level axis: 70 dB window under the loudest point shown (live or ghost).
-  let top = -60;
-  for (const arr of [live, ghost, noise]) {
-    if (!arr) continue;
-    for (let i = 0; i < arr.length; i++) top = Math.max(top, arr[i]);
-  }
-  const dbTop = Math.ceil((top + 5) / 10) * 10;
-  const dbBot = dbTop - 70;
+  // Level axis: fixed, so peaks can be compared from frame to frame.
+  const dbTop = DB_TOP;
+  const dbBot = DB_BOT;
   const y = (db) => padT + ((dbTop - Math.max(dbBot, Math.min(dbTop, db))) / (dbTop - dbBot)) * (h - padT - padB);
 
   // Grid

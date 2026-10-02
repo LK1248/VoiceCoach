@@ -4,13 +4,14 @@
 //    graph in pale gray; the newest is drawn in the text colour, thicker.
 //  • Pitch following: the user must hold the note within tolerance for
 //    `holdTime` seconds; then the next note plays. Successes are counted per run.
-import { midiToName } from './music.js?v=20261001224055';
-import { settings, vowelsFor, instrumentFor, soundText } from './settings.js?v=20261001224055';
-import { pickInstrument } from './instruments.js?v=20261001224055';
-import { getAllowedNotes } from './noteRange.js?v=20261001224055';
-import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, noteCardHtml } from './grading.js?v=20261001224055';
-import { LOG_FREQS, logSpectrum, findPeaks, cleanSpectrum, subtractNoise, drawSpectrum } from './spectrum.js?v=20261001224055';
-import { createPlot, drawBand, drawTrace, drawPlayhead, drawMessage } from './plot.js?v=20261001224055';
+import { midiToName } from './music.js?v=20261002151213';
+import { settings, vowelsFor, instrumentFor, soundText } from './settings.js?v=20261002151213';
+import { pickInstrument } from './instruments.js?v=20261002151213';
+import { getAllowedNotes } from './noteRange.js?v=20261002151213';
+import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, noteCardHtml } from './grading.js?v=20261002151213';
+import { activeNoiseProfile, bindRoomNoiseControls } from './roomNoise.js?v=20261002151213';
+import { logSpectrum, findPeaks, cleanSpectrum, subtractNoise, drawSpectrum } from './spectrum.js?v=20261002151213';
+import { createPlot, drawBand, drawTrace, drawPlayhead, drawMessage } from './plot.js?v=20261002151213';
 
 const $ = (id) => document.getElementById(id);
 const VOICE_FRAMES = 3; // consecutive steady voiced frames (~70 ms) that start an attempt
@@ -22,10 +23,6 @@ const FOLLOW_VIEW = 6; // seconds shown on the pitch-following graph
 const NEXT_DELAY = 600; // ms between a successful match and the next note
 const SPECTRUM_INTERVAL = 50; // ms between spectrum updates
 const REF_SKIP = 0.15; // s of reference attack left out of the averaged reference spectrum
-const NOISE_SETTLE_MS = 400; // let the analyser window clear before measuring room noise
-const NOISE_CAL_MS = 1500; // how long room noise is measured
-const NOISE_JUMP_DB = 12; // a frequency whose level jumps this much during calibration...
-const NOISE_JUMP_SHARE = 0.03; // ...at more than this share of frequencies means someone spoke/sang
 const F0_FRESH_MS = 200; // a detected sung pitch counts as current for this long
 const BELOW_F0_MARGIN = 2 ** (-1 / 12); // spectrum peaks more than a semitone below f0 are ignored
 const VOWEL_KEYS = ['A', 'E', 'I', 'O', 'U'];
@@ -65,10 +62,14 @@ export class SingleMode {
     new ResizeObserver(() => this.draw()).observe($('snCanvas'));
     new ResizeObserver(() => this.redrawSpectrum()).observe($('snSpectrum'));
     this.spectrumLoop();
-    // Room-noise subtraction (spectrum view, mic only)
-    this.noise = { profile: null, on: false, calibrating: false };
-    $('snNoiseCal').onclick = () => this.calibrateNoise();
-    $('snNoiseOn').onchange = (e) => { this.noise.on = e.target.checked; this.redrawSpectrum(); };
+    // Room-noise subtraction (shared with Vocal Range) and the unfiltered view
+    bindRoomNoiseControls({
+      cal: $('snNoiseCal'), check: $('snNoiseOn'), status: $('snNoiseStatus'),
+      engine, recorder,
+      beforeCalibrate: () => { if (this.live) this.abortAttempt(); },
+      onChange: () => this.redrawSpectrum(),
+    });
+    $('snRaw').onchange = () => this.redrawSpectrum();
     this.renderUI();
     this.renderHold(0);
     this.renderStats();
@@ -446,9 +447,9 @@ export class SingleMode {
     if (!sp.buf || sp.buf.length !== analyser.frequencyBinCount) sp.buf = new Float32Array(analyser.frequencyBinCount);
     analyser.getFloatFrequencyData(sp.buf);
     const binHz = ctx.sampleRate / analyser.fftSize;
-    const subtract = !playing && this.noise.on && this.noise.profile;
+    const profile = playing ? null : activeNoiseProfile(); // subtract room noise from the mic only
     const raw = logSpectrum(sp.buf, binHz);
-    const s = subtract ? subtractNoise(raw, this.noise.profile) : raw;
+    const s = profile ? subtractNoise(raw, profile) : raw;
 
     // Average the reference's steady part (power domain) for the pale "ghost" curve.
     if (playing && now >= w[0] + REF_SKIP && now <= w[1]) {
@@ -461,81 +462,33 @@ export class SingleMode {
       sp.refN = 0;
     }
     sp.last = {
-      live: cleanSpectrum(s, minFreq),
+      clean: cleanSpectrum(s, minFreq),
+      raw: s,
       ghost: playing ? null : sp.ghost,
-      noise: subtract ? this.noise.profile : null,
+      noise: profile,
       target: this.target,
       sourceLabel: label,
       peaks: findPeaks(s, sp.buf, binHz, { minFreq }),
       minFreq,
     };
-    drawSpectrum($('snSpectrum'), sp.last);
-  }
-
-  /**
-   * Measure the room's background noise spectrum (mic, ~1.5 s of quiet) for
-   * subtraction. Room noise is steady (even hum or fan whine), so the
-   * measurement is rejected if many frequencies jump in level meanwhile
-   * (a voice fills the gaps between noise components by 20 dB or more).
-   */
-  async calibrateNoise() {
-    if (this.noise.calibrating) return;
-    const status = $('snNoiseStatus');
-    const setStatus = (text, warn = false) => { status.textContent = text; status.classList.toggle('warn', warn); };
-    try {
-      await this.recorder.init();
-    } catch (err) {
-      setStatus(err.name === 'NotAllowedError' ? 'microphone permission denied' : err.message, true);
-      return;
-    }
-    this.noise.calibrating = true;
-    $('snNoiseCal').disabled = true;
-    this.engine.stopAll();
-    if (this.live) this.abortAttempt();
-    const an = this.recorder.analyser;
-    const binHz = this.engine.ctx.sampleRate / an.fftSize;
-    const buf = new Float32Array(an.frequencyBinCount);
-    const sum = new Float64Array(LOG_FREQS.length);
-    const frames = []; // each reading, to spot speech/singing afterwards
-    let n = 0;
-    const start = performance.now();
-    await new Promise((resolve) => {
-      const timer = setInterval(() => {
-        const t = performance.now() - start;
-        const remaining = (NOISE_SETTLE_MS + NOISE_CAL_MS - t) / 1000;
-        setStatus(`stay quiet… ${Math.max(0, remaining).toFixed(1)} s`);
-        if (t < NOISE_SETTLE_MS) return;
-        an.getFloatFrequencyData(buf);
-        const s = logSpectrum(buf, binHz);
-        for (let i = 0; i < s.length; i++) sum[i] += 10 ** (s[i] / 10);
-        frames.push(s);
-        n++;
-        if (t >= NOISE_SETTLE_MS + NOISE_CAL_MS) { clearInterval(timer); resolve(); }
-      }, SPECTRUM_INTERVAL);
-    });
-    this.noise.calibrating = false;
-    $('snNoiseCal').disabled = false;
-    let jumped = 0;
-    for (let i = 0; i < LOG_FREQS.length; i++) {
-      const vals = frames.map((fr) => fr[i]).sort((a, b) => a - b);
-      // 85th percentile vs median: sustained sound (a voice) counts, a single click doesn't.
-      if (vals[Math.floor(vals.length * 0.85)] - vals[vals.length >> 1] > NOISE_JUMP_DB) jumped++;
-    }
-    if (jumped > NOISE_JUMP_SHARE * LOG_FREQS.length) {
-      setStatus('heard a sound during calibration: stay quiet and try again', true);
-      return;
-    }
-    this.noise.profile = Float32Array.from(sum, (v) => 10 * Math.log10(v / n + 1e-20));
-    this.noise.on = true;
-    $('snNoiseOn').disabled = false;
-    $('snNoiseOn').checked = true;
-    setStatus(`calibrated ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
     this.redrawSpectrum();
   }
 
+  /** Draw the last spectrum frame; the Unfiltered toggle shows the raw analysis (no smoothing or below-f0 cut). */
   redrawSpectrum() {
-    const last = this.spec.last ?? { live: null, ghost: null, target: this.target, sourceLabel: 'Press New note to start', peaks: [] };
-    drawSpectrum($('snSpectrum'), { ...last, target: this.target });
+    const last = this.spec.last;
+    if (!last) {
+      drawSpectrum($('snSpectrum'), { live: null, target: this.target, sourceLabel: 'Press New note to start', peaks: [] });
+      return;
+    }
+    const unfiltered = $('snRaw').checked;
+    drawSpectrum($('snSpectrum'), {
+      ...last,
+      live: unfiltered ? last.raw : last.clean,
+      minFreq: unfiltered ? undefined : last.minFreq,
+      sourceLabel: unfiltered ? `${last.sourceLabel} · unfiltered` : last.sourceLabel,
+      target: this.target,
+    });
   }
 
   requestDraw() {

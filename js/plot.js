@@ -1,5 +1,5 @@
 // Pitch-over-time plotting on a canvas: semitone grid, target bands, traces.
-import { midiToName } from './music.js?v=20261001224055';
+import { midiToName } from './music.js?v=20261002151213';
 
 /**
  * Prepare a HiDPI canvas and draw the semitone grid for pitches [lo, hi] over
@@ -34,7 +34,11 @@ export function createPlot(canvas, { lo, hi, t0, t1 }) {
     g.moveTo(padL, y(m));
     g.lineTo(w - padR, y(m));
     g.stroke();
-    if (!midiToName(m).includes('#')) {
+    // Label every natural note when there's room; otherwise only C and G (or just C).
+    const pxPerSemi = (h - padT - padB) / (hi - lo);
+    const pc = ((m % 12) + 12) % 12;
+    const labelled = pxPerSemi >= 11 ? !midiToName(m).includes('#') : pxPerSemi >= 5 ? pc === 0 || pc === 7 : pc === 0;
+    if (labelled) {
       g.fillStyle = col('--muted');
       g.fillText(midiToName(m), padL - 6, y(m));
     }

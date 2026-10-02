@@ -1,6 +1,6 @@
 // Shared exercise settings, persisted in localStorage, bound to the sidebar UI.
-import { INTERVALS, midiToName } from './music.js?v=20261001224055';
-import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, instrumentRange } from './instruments.js?v=20261001224055';
+import { INTERVALS, midiToName } from './music.js?v=20261002151213';
+import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, instrumentRange } from './instruments.js?v=20261002151213';
 
 const KEY = 'voiceCoach.settings.v1';
 
@@ -21,6 +21,8 @@ const DEFAULTS = {
   singleAllowed: null, // Single Note: allowed MIDI notes within the range; null = all
   holdTime: 2, // Single Note, pitch following: seconds to hold the note
   autoNext: false,
+  rangeRegister: 'chest', // Vocal Range: register of the siren
+  sirenStyle: 'vowel', // Vocal Range: 'vowel' | 'nasal' | 'trill'
   keepAlive: true, // play inaudible noise so Bluetooth audio doesn't power down between notes // Interval ID: go to the next interval after a correct answer
   tolerance: 25, // cents
   singDur: 1.5, // seconds per sung note
@@ -147,7 +149,7 @@ export function initSettingsUI() {
   });
 
   // Radio groups
-  for (const key of ['direction', 'singStart', 'singleMode']) {
+  for (const key of ['direction', 'singStart', 'singleMode', 'sirenStyle']) {
     document.querySelectorAll(`input[name="${key}"]`).forEach((r) => {
       r.checked = r.value === settings[key];
       r.onchange = () => { settings[key] = r.value; changed(key); };

@@ -1,8 +1,8 @@
 // Interval singing: hear two notes, sing them back, get graded on pitch
 // accuracy, and compare the recording against the reference.
-import { INTERVALS, midiToName, pickItem } from './music.js?v=20261001224055';
-import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, fmtCents, noteCardHtml } from './grading.js?v=20261001224055';
-import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261001224055';
+import { INTERVALS, midiToName, pickItem } from './music.js?v=20261002151213';
+import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, fmtCents, noteCardHtml } from './grading.js?v=20261002151213';
+import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261002151213';
 
 const $ = (id) => document.getElementById(id);
 const COUNT_IN_BEAT = 0.6; // seconds

@@ -1,11 +1,12 @@
-import { AudioEngine } from './audio.js?v=20261001224055';
-import { MicRecorder } from './recorder.js?v=20261001224055';
-import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261001224055';
-import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20261001224055';
-import { IdentifyMode } from './identify.js?v=20261001224055';
-import { SingMode } from './sing.js?v=20261001224055';
-import { SingleMode } from './single.js?v=20261001224055';
-import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261001224055';
+import { AudioEngine } from './audio.js?v=20261002151213';
+import { MicRecorder } from './recorder.js?v=20261002151213';
+import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261002151213';
+import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20261002151213';
+import { IdentifyMode } from './identify.js?v=20261002151213';
+import { SingMode } from './sing.js?v=20261002151213';
+import { RangeMode } from './range.js?v=20261002151213';
+import { SingleMode } from './single.js?v=20261002151213';
+import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261002151213';
 
 const engine = new AudioEngine();
 const recorder = new MicRecorder(engine);
@@ -38,6 +39,7 @@ const modes = {
   identify: new IdentifyMode(engine, status),
   single: new SingleMode(engine, recorder, status),
   sing: new SingMode(engine, recorder, status),
+  range: new RangeMode(engine, recorder, status),
 };
 // Mic frames go to whichever theme is showing.
 recorder.onFrame = (f) => modes[mode].onFrame?.(f);
@@ -74,6 +76,7 @@ onSettingsChange((field) => {
   if (field === 'keepAlive') engine.setKeepAlive(settings.keepAlive);
   if (field === 'instrument') noteRange.render(); // range follows the instrument until set
   modes.single.onSettings(field);
+  modes.range.onSettings(field);
   if (field === 'intervals') modes.identify.renderAnswers();
   modes.sing.onSettings(field);
 });

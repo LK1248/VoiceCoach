@@ -1,12 +1,27 @@
 // Microphone capture: raw PCM via an AudioWorklet (sample-accurate timing for
 // grading and playback alignment) plus live pitch frames.
-import { detectPitch } from './pitch.js?v=20261001224055';
-import { makeSpectrumAnalyser } from './audio.js?v=20261001224055';
-import { freqToMidi } from './music.js?v=20261001224055';
+import { detectPitch } from './pitch.js?v=20261002151213';
+import { makeSpectrumAnalyser } from './audio.js?v=20261002151213';
+import { freqToMidi } from './music.js?v=20261002151213';
 
 const CHUNK = 1024;
 const WINDOW = 2048;
 const HISTORY_SEC = 1.5; // how far back a recording can be back-dated
+const HANN = Float32Array.from({ length: WINDOW }, (_, i) => 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (WINDOW - 1)));
+
+/** Power of one frequency in a Hann-windowed buffer (Goertzel). */
+function tonePower(buf, freq, sr) {
+  const w = (2 * Math.PI * freq) / sr;
+  const coeff = 2 * Math.cos(w);
+  let s1 = 0;
+  let s2 = 0;
+  for (let i = 0; i < buf.length; i++) {
+    const s0 = buf[i] * HANN[i] + coeff * s1 - s2;
+    s2 = s1;
+    s1 = s0;
+  }
+  return s1 * s1 + s2 * s2 - coeff * s1 * s2;
+}
 
 const WORKLET_SRC = `
 class RecProc extends AudioWorkletProcessor {
@@ -96,6 +111,14 @@ export class MicRecorder {
       midi: voiced ? freqToMidi(p.freq) : null,
       voiced,
       rms: p.rms,
+      // Raw detector output, for themes that apply their own voicing rule (Vocal Range).
+      rawMidi: p.freq > 0 ? freqToMidi(p.freq) : null,
+      clarity: p.clarity,
+      // H1–H2 (dB): level of the fundamental over the 2nd harmonic. Rises sharply
+      // when the voice flips from chest (M1) to head/falsetto (M2).
+      h12: p.freq > 0 && 2 * p.freq < this.sr / 2
+        ? 10 * Math.log10((tonePower(this.window, p.freq, this.sr) + 1e-20) / (tonePower(this.window, 2 * p.freq, this.sr) + 1e-20))
+        : null,
     };
     this.recentFrames.push(frame);
     while (this.recentFrames[0].abs < keepFrom) this.recentFrames.shift();
