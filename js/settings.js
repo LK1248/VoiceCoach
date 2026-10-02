@@ -1,6 +1,6 @@
 // Shared exercise settings, persisted in localStorage, bound to the sidebar UI.
-import { INTERVALS, midiToName } from './music.js?v=20261002164634';
-import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, instrumentRange } from './instruments.js?v=20261002164634';
+import { INTERVALS, midiToName } from './music.js?v=20261002184453';
+import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, instrumentRange } from './instruments.js?v=20261002184453';
 
 const KEY = 'voiceCoach.settings.v1';
 
@@ -21,6 +21,7 @@ const DEFAULTS = {
   singleAllowed: null, // Single Note: allowed MIDI notes within the range; null = all
   holdTime: 2, // Single Note, pitch following: seconds to hold the note
   autoNext: false,
+  hideSpectrum: true, // Interval ID: hide the spectrum until answered (peak gaps reveal the interval)
   rangeRegister: 'chest', // Vocal Range: register of the siren
   sirenStyle: 'vowel', // Vocal Range: 'vowel' | 'nasal' | 'trill'
   keepAlive: true, // play inaudible noise so Bluetooth audio doesn't power down between notes // Interval ID: go to the next interval after a correct answer
@@ -206,6 +207,7 @@ export function initSettingsUI() {
   bindCheck('showInterval');
   bindCheck('octaveTolerant');
   bindCheck('autoNext');
+  bindCheck('hideSpectrum');
   bindCheck('keepAlive');
 }
 
