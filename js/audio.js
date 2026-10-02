@@ -1,6 +1,6 @@
 // Audio playback: sampled instruments (loaded on demand) with a synth fallback.
-import { INSTRUMENTS } from './instruments.js?v=20261002154844';
-import { midiToName, midiToFreq } from './music.js?v=20261002154844';
+import { INSTRUMENTS } from './instruments.js?v=20261002164412';
+import { midiToName, midiToFreq } from './music.js?v=20261002164412';
 
 const SF_BASE = 'https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM';
 const VOICE_BASE = 'samples/voices/';
@@ -166,13 +166,13 @@ export class AudioEngine {
     let t = when ?? ctx.currentTime + 0.06;
     const start = t;
     midis.forEach((m, i) => {
-      this.playNote(samples[i], m, t, dur, gain * (inst.gain ?? 1));
+      this.playNote(samples[i], m, t, dur, gain * (inst.gain ?? 1), inst.wave);
       t += dur + gap;
     });
     return { start, end: t - gap, fallback };
   }
 
-  playNote(sample, midi, when, dur, gain = 1) {
+  playNote(sample, midi, when, dur, gain = 1, wave = 'triangle') {
     const ctx = this.ctx;
     const g = ctx.createGain();
     g.connect(this.master);
@@ -188,7 +188,7 @@ export class AudioEngine {
       g.gain.setValueAtTime(gain, when);
     } else {
       src = ctx.createOscillator();
-      src.type = 'triangle';
+      src.type = wave; // synth instruments, or the fallback when a sample failed to load
       src.frequency.value = midiToFreq(midi);
       g.gain.setValueAtTime(0, when);
       g.gain.linearRampToValueAtTime(0.08 * gain, when + 0.02); // ~RMS of the samples

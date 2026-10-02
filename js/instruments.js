@@ -15,7 +15,10 @@ export const INSTRUMENTS = {
   female: { label: 'Female voice', vocalset: 'female', range: [58, 76], gain: 0.5 }, // A#3–E5
   choirAah: { label: 'Choir "aah" (sampled)', sf: 'choir_aahs', range: [48, 72], playable: [43, 79] },
   voiceOoh: { label: 'Voice "ooh" (sampled)', sf: 'voice_oohs', range: [55, 76], playable: [53, 79] },
-  tone: { label: 'Pure tone (synth)', sf: null, range: [48, 72], playable: [21, 108] },
+  // Synthesized: `wave` is the oscillator type. A triangle has odd harmonics only (1/n²);
+  // a sine has no harmonics at all, so its brightness follows its pitch exactly.
+  tone: { label: 'Synth tone (triangle)', sf: null, wave: 'triangle', range: [48, 72], playable: [21, 108] },
+  sine: { label: 'Pure tone (sine)', sf: null, wave: 'sine', range: [48, 72], playable: [21, 108], gain: 0.82 }, // same RMS as the triangle
 };
 
 export const VOWELS = [

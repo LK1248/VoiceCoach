@@ -1,12 +1,12 @@
-import { AudioEngine } from './audio.js?v=20261002154844';
-import { MicRecorder } from './recorder.js?v=20261002154844';
-import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261002154844';
-import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20261002154844';
-import { IdentifyMode } from './identify.js?v=20261002154844';
-import { SingMode } from './sing.js?v=20261002154844';
-import { RangeMode } from './range.js?v=20261002154844';
-import { SingleMode } from './single.js?v=20261002154844';
-import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261002154844';
+import { AudioEngine } from './audio.js?v=20261002164412';
+import { MicRecorder } from './recorder.js?v=20261002164412';
+import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261002164412';
+import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20261002164412';
+import { IdentifyMode } from './identify.js?v=20261002164412';
+import { SingMode } from './sing.js?v=20261002164412';
+import { RangeMode } from './range.js?v=20261002164412';
+import { SingleMode } from './single.js?v=20261002164412';
+import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261002164412';
 
 const engine = new AudioEngine();
 const recorder = new MicRecorder(engine);

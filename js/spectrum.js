@@ -1,6 +1,6 @@
 // Live spectrum (log frequency × dB) with the first spectral peaks marked and
 // the target note's harmonics as guides. Used by Single Note → Pitch alignment.
-import { midiToName, freqToMidi } from './music.js?v=20261002154844';
+import { midiToName, freqToMidi } from './music.js?v=20261002164412';
 
 const FMIN = 50;
 const FMAX = 8000;
