@@ -1,4 +1,4 @@
-import { pickInstrument } from './instruments.js?v=20261002184453';
+import { pickInstrument } from './instruments.js?v=20261002235214';
 
 // Music theory helpers: note names, frequencies, intervals.
 

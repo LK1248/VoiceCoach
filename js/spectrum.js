@@ -1,6 +1,6 @@
 // Live spectrum (log frequency × dB) with the first spectral peaks marked and
 // the target note's harmonics as guides. Used by Single Note → Pitch alignment.
-import { midiToName, freqToMidi } from './music.js?v=20261002184453';
+import { midiToName, freqToMidi } from './music.js?v=20261002235214';
 
 const FMIN = 50;
 const FMAX = 8000;
@@ -114,6 +114,34 @@ export function spectralCentroid(s, minFreq = FMIN) {
     den += w;
   }
   return den ? num / den : null;
+}
+
+const erbRate = (f) => 21.4 * Math.log10(1 + 0.00437 * f);
+const erbRateToHz = (e) => (10 ** (e / 21.4) - 1) / 0.00437;
+const PERCEPTUAL_RANGE_DB = 60; // points this far below the loudest are treated as inaudible
+
+/**
+ * Perceptual brightness in Hz (compare spectralCentroid): the centroid on the ERB-rate scale
+ * (the ear's frequency resolution) of a loudness-like pattern, power per ERB raised to 0.3
+ * (Stevens' law), after Marozeau & de Cheveigné (2007) and Zwicker's sharpness. Weak high
+ * partials count for more than in the power-weighted Hz centroid.
+ */
+export function perceptualCentroid(s, minFreq = FMIN) {
+  const i0 = firstIndexAbove(minFreq);
+  let max = -Infinity;
+  for (let i = i0; i < s.length; i++) max = Math.max(max, s[i]);
+  let num = 0;
+  let den = 0;
+  for (let i = i0; i < s.length; i++) {
+    if (s[i] < max - PERCEPTUAL_RANGE_DB) continue;
+    const f = LOG_FREQS[i];
+    const erb = 24.7 * (4.37 * f / 1000 + 1); // Hz
+    // loudness per ERB × ERB-rate span of this grid point (band ∝ f, d(ERB-rate)/df ∝ 1/erb)
+    const w = (10 ** (s[i] / 10) * erb) ** 0.3 * (f / erb);
+    num += w * erbRate(f);
+    den += w;
+  }
+  return den ? erbRateToHz(num / den) : null;
 }
 
 /** First log-grid index at or above f. */

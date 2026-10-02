@@ -1,9 +1,9 @@
 // Interval identification: hear two notes, pick the interval.
-import { INTERVALS, intervalBySemis, midiToName, pickItem } from './music.js?v=20261002184453';
+import { INTERVALS, intervalBySemis, midiToName, midiToFreq, pickItem } from './music.js?v=20261002235214';
 // (no room-noise controls in this tab: the spectrum is the app's own playback)
-import { makeSpectrumAnalyser } from './audio.js?v=20261002184453';
-import { LOG_FREQS, logSpectrum, findPeaks, cleanSpectrum, spectralCentroid, drawSpectrum } from './spectrum.js?v=20261002184453';
-import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261002184453';
+import { makeSpectrumAnalyser } from './audio.js?v=20261002235214';
+import { LOG_FREQS, logSpectrum, findPeaks, cleanSpectrum, spectralCentroid, perceptualCentroid, drawSpectrum } from './spectrum.js?v=20261002235214';
+import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261002235214';
 
 const $ = (id) => document.getElementById(id);
 const AUTO_NEXT_DELAY = 1200; // ms to show a correct answer before moving on
@@ -199,17 +199,50 @@ export class IdentifyMode {
     const box = $('idBright');
     if (!this.answered || !sp?.notes[0] || !sp.notes[1]) { box.innerHTML = ''; return; }
     const [m1, m2] = sp.midis;
-    const c1 = spectralCentroid(sp.notes[0], 440 * 2 ** ((m1 - 1 - 69) / 12));
-    const c2 = spectralCentroid(sp.notes[1], 440 * 2 ** ((m2 - 1 - 69) / 12));
-    if (!c1 || !c2) { box.innerHTML = ''; return; }
+    const fmin = (m) => 440 * 2 ** ((m - 1 - 69) / 12);
     const fmt = (f) => (f >= 1000 ? `${(f / 1000).toFixed(2)} kHz` : `${Math.round(f)} Hz`);
-    const semis = 12 * Math.log2(c2 / c1);
-    const bright = Math.abs(semis) < 1 ? 'about the same brightness' : semis > 0 ? 'brighter' : 'darker';
     const pitchUp = m2 > m1;
-    const clash = Math.abs(semis) >= 1 && (semis > 0) !== pitchUp;
-    box.innerHTML = `<b>Brightness</b> (spectral centroid): note 1 ${fmt(c1)} → note 2 ${fmt(c2)}
-      (${semis >= 0 ? '+' : '−'}${Math.abs(semis).toFixed(1)} semitones, ${bright}).
-      ${clash ? `<span class="clash">The pitch goes ${pitchUp ? 'up' : 'down'} but the brightness goes ${pitchUp ? 'down' : 'up'}: a common reason an interval can sound ${pitchUp ? 'descending' : 'ascending'}.</span>` : ''}`;
+    // A semitone shift as the nearest interval, e.g. 15.2 → "≈ octave + m3 up"
+    const asInterval = (semis) => {
+      const n = Math.round(Math.abs(semis));
+      if (n === 0) return 'unison';
+      const oct = Math.floor(n / 12);
+      const rest = n % 12;
+      const parts = [oct === 1 ? 'octave' : oct > 1 ? `${oct} octaves` : '', rest ? intervalBySemis(rest).short : ''];
+      return `${parts.filter(Boolean).join(' + ')} ${semis > 0 ? 'up' : 'down'}`;
+    };
+    // Two measures side by side while we compare them: the classic power-weighted centroid in Hz,
+    // and a perceptual one (ERB-rate scale, loudness-compressed).
+    const measures = [
+      ['Linear', 'power-weighted centroid in Hz', spectralCentroid],
+      ['Perceptual', 'loudness-weighted centroid on the ERB scale', perceptualCentroid],
+    ].map(([name, title, fn]) => {
+      const c1 = fn(sp.notes[0], fmin(m1));
+      const c2 = fn(sp.notes[1], fmin(m2));
+      if (!c1 || !c2) return null;
+      const semis = 12 * Math.log2(c2 / c1);
+      const bright = Math.abs(semis) < 1 ? 'about the same' : semis > 0 ? 'brighter' : 'darker';
+      const clash = Math.abs(semis) >= 1 && (semis > 0) !== pitchUp;
+      return { name, clash, html: `<span title="${title}">${name}:</span> ${fmt(c1)} → ${fmt(c2)}
+        (${semis >= 0 ? '+' : '−'}${Math.abs(semis).toFixed(1)} st ≈ ${asInterval(semis)}, ${bright})` };
+    }).filter(Boolean);
+    if (!measures.length) { box.innerHTML = ''; return; }
+    const clashing = measures.filter((m) => m.clash).map((m) => m.name.toLowerCase());
+    // Linear centroid in harmonic numbers (÷ f0): the spectrum's shape relative to the note.
+    // In semitones, linear brightness shift = pitch shift + this shift.
+    let harmonic = '';
+    const l1 = spectralCentroid(sp.notes[0], fmin(m1));
+    const l2 = spectralCentroid(sp.notes[1], fmin(m2));
+    if (l1 && l2) {
+      const h1 = l1 / midiToFreq(m1);
+      const h2 = l2 / midiToFreq(m2);
+      const semis = 12 * Math.log2(h2 / h1);
+      harmonic = `<br><span title="linear centroid ÷ fundamental: around which harmonic the energy sits. Linear shift = pitch shift + this shift">Harmonic:</span>
+        ${h1.toFixed(1)} → ${h2.toFixed(1)} (${semis >= 0 ? '+' : '−'}${Math.abs(semis).toFixed(1)} st; pitch + harmonic = linear)`;
+    }
+    box.innerHTML = `<b>Brightness</b> (spectral centroid) vs. pitch<br>
+      Pitch: ${m2 > m1 ? '+' : '−'}${Math.abs(m2 - m1)} st = ${asInterval(m2 - m1)}<br>${measures.map((m) => m.html).join('<br>')}${harmonic}
+      ${clashing.length ? `<span class="clash">The pitch goes ${pitchUp ? 'up' : 'down'} but the brightness goes ${pitchUp ? 'down' : 'up'}${clashing.length < measures.length ? ` (${clashing[0]} measure)` : ''}: a common reason an interval can sound ${pitchUp ? 'descending' : 'ascending'}.</span>` : ''}`;
   }
 
   renderAnswers() {

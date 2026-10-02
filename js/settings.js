@@ -1,6 +1,6 @@
 // Shared exercise settings, persisted in localStorage, bound to the sidebar UI.
-import { INTERVALS, midiToName } from './music.js?v=20261002184453';
-import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, instrumentRange } from './instruments.js?v=20261002184453';
+import { INTERVALS, midiToName } from './music.js?v=20261002235214';
+import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, instrumentRange } from './instruments.js?v=20261002235214';
 
 const KEY = 'voiceCoach.settings.v1';
 
