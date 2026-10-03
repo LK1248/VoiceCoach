@@ -1,8 +1,8 @@
 // Interval singing: hear two notes, sing them back, get graded on pitch
 // accuracy, and compare the recording against the reference.
-import { INTERVALS, midiToName, pickItem } from './music.js?v=20261002235214';
-import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, fmtCents, noteCardHtml } from './grading.js?v=20261002235214';
-import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261002235214';
+import { INTERVALS, midiToName, pickItem } from './music.js?v=20261003002250';
+import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, fmtCents, noteCardHtml } from './grading.js?v=20261003002250';
+import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261003002250';
 
 const $ = (id) => document.getElementById(id);
 const COUNT_IN_BEAT = 0.6; // seconds
@@ -101,7 +101,7 @@ export class SingMode {
     const { item } = this;
     const el = $('sgInterval');
     if (!item) { el.innerHTML = '&nbsp;'; return; }
-    const arrow = item.dir === 'asc' ? '↑' : '↓';
+    const arrow = item.interval.semis === 0 ? '' : item.dir === 'desc' ? '↓' : '↑';
     el.textContent = reveal || settings.showInterval
       ? `${arrow} ${item.interval.name}  ·  ${midiToName(item.root)} → ${midiToName(item.second)}${soundText(item)}`
       : `${arrow} ? ? ?`;
@@ -117,7 +117,9 @@ export class SingMode {
     this.setButtons();
 
     try {
-      if (newItem || !this.item) this.item = pickItem(settings, getRange(), this.item);
+      // Harmonic (both notes together) is Interval ID only: sing it as ascending.
+      if (newItem || !this.item)
+        this.item = pickItem({ ...settings, direction: settings.direction === 'harm' ? 'asc' : settings.direction }, getRange(), this.item);
       this.D = settings.singDur;
       this.frames = [];
 

@@ -1,6 +1,6 @@
 // Audio playback: sampled instruments (loaded on demand) with a synth fallback.
-import { INSTRUMENTS } from './instruments.js?v=20261002235214';
-import { midiToName, midiToFreq } from './music.js?v=20261002235214';
+import { INSTRUMENTS } from './instruments.js?v=20261003002250';
+import { midiToName, midiToFreq } from './music.js?v=20261003002250';
 
 const SF_BASE = 'https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM';
 const VOICE_BASE = 'samples/voices/';
@@ -156,7 +156,8 @@ export class AudioEngine {
    * AudioContext time; `fallback` is true if any sample failed and a synth
    * tone was used instead.
    */
-  async playSequence(instKey, midis, { dur = 1, gap = 0.08, when, gain = 1, vowels = [] } = {}) {
+  /** Play notes one after another, or all at once with `together` (an interval as a chord). */
+  async playSequence(instKey, midis, { dur = 1, gap = 0.08, when, gain = 1, vowels = [], together = false } = {}) {
     const ctx = this.ensure();
     const inst = INSTRUMENTS[instKey];
     const samples = await Promise.all(
@@ -165,6 +166,11 @@ export class AudioEngine {
     const fallback = !!(inst.sf || inst.vocalset) && samples.some((s) => !s);
     let t = when ?? ctx.currentTime + 0.06;
     const start = t;
+    if (together) {
+      // Equal-power share so the chord is about as loud as a single note.
+      midis.forEach((m, i) => this.playNote(samples[i], m, t, dur, gain * (inst.gain ?? 1) / Math.sqrt(midis.length), inst.wave));
+      return { start, end: t + dur, fallback };
+    }
     midis.forEach((m, i) => {
       this.playNote(samples[i], m, t, dur, gain * (inst.gain ?? 1), inst.wave);
       t += dur + gap;
@@ -172,10 +178,11 @@ export class AudioEngine {
     return { start, end: t - gap, fallback };
   }
 
-  playNote(sample, midi, when, dur, gain = 1, wave = 'triangle') {
-    const ctx = this.ctx;
+  /** `out` ({ ctx, dest }) renders into another context (offline analysis) instead of the speakers. */
+  playNote(sample, midi, when, dur, gain = 1, wave = 'triangle', out = null) {
+    const ctx = out?.ctx ?? this.ctx;
     const g = ctx.createGain();
-    g.connect(this.master);
+    g.connect(out?.dest ?? this.master);
     let src;
     if (sample) {
       src = ctx.createBufferSource();
@@ -197,7 +204,37 @@ export class AudioEngine {
     src.connect(g);
     src.start(when);
     src.stop(when + dur + 0.5);
-    this._track(src);
+    if (!out) this._track(src);
+  }
+
+  /**
+   * Render one note silently (offline) as it would sound through the speakers and return
+   * analyser frames (dB per FFT bin) read at `times` (s from the note's start). The analyser's
+   * window ends at each read time.
+   */
+  async offlineFrames(instKey, midi, { dur = 1, vowel = 'A', gain = 1, fftSize = 8192, times = [] } = {}) {
+    const sr = this.ensure().sampleRate;
+    const inst = INSTRUMENTS[instKey];
+    const sample = await this.loadSample(instKey, midi, vowel).catch(() => null);
+    const oc = new OfflineAudioContext(1, Math.ceil((dur + 0.3) * sr), sr);
+    const master = oc.createGain();
+    master.gain.value = this.master.gain.value;
+    const an = makeSpectrumAnalyser(oc);
+    an.fftSize = fftSize;
+    an.smoothingTimeConstant = 0;
+    master.connect(an).connect(oc.destination);
+    this.playNote(sample, midi, 0, dur, gain * (inst.gain ?? 1), inst.wave, { ctx: oc, dest: master });
+    const frames = [];
+    for (const t of times) {
+      oc.suspend(t).then(() => {
+        const buf = new Float32Array(an.frequencyBinCount);
+        an.getFloatFrequencyData(buf);
+        frames.push(buf);
+        oc.resume();
+      });
+    }
+    await oc.startRendering();
+    return frames;
   }
 
   playBuffer(buffer, when, gain = 1) {

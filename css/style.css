@@ -117,6 +117,10 @@ kbd { font-size: 11px; padding: 0 4px; border: 1px solid var(--border); border-r
 .seg input { display: none; }
 .seg span { display: block; padding: 6px 4px; font-size: 13px; }
 .seg input:checked + span { background: var(--accent); color: #fff; }
+.seg.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); }
+.seg.grid2 span { background: var(--panel); }
+.seg.grid2 input:checked + span { background: var(--accent); }
+body[data-mode="sing"] .seg.grid2 label:nth-child(3) { grid-column: span 2; } /* Harmonic hidden there */
 
 .sub { margin-top: 10px; }
 .vowel-row { display: grid; grid-template-columns: 90px 1fr; align-items: center; gap: 8px; margin-bottom: 6px; }
@@ -257,3 +261,11 @@ canvas.summary-canvas { width: 100%; height: 240px; display: block; margin-top: 
 /* Interval ID spectrum */
 .bright-line { margin-top: 6px; font-size: 14px; }
 .bright-line .clash { display: block; color: var(--warn); margin-top: 2px; }
+.bright-line > div + div { margin-top: 6px; }
+/* Roughness of every interval for the sound just played (notes together) */
+.rough-curve { display: flex; gap: 3px; align-items: stretch; height: 56px; margin-top: 4px; max-width: 420px; }
+.rough-curve span { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; }
+.rough-curve i { display: block; width: 100%; background: var(--pale); border-radius: 2px 2px 0 0; }
+.rough-curve span.now i { background: var(--warn); }
+.rough-curve small { font-size: 10px; color: var(--muted); line-height: 14px; }
+.rough-curve span.now small { color: var(--text); font-weight: 600; }

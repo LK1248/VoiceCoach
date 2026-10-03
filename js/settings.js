@@ -1,6 +1,6 @@
 // Shared exercise settings, persisted in localStorage, bound to the sidebar UI.
-import { INTERVALS, midiToName } from './music.js?v=20261002235214';
-import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, instrumentRange } from './instruments.js?v=20261002235214';
+import { INTERVALS, midiToName } from './music.js?v=20261003002250';
+import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, instrumentRange } from './instruments.js?v=20261003002250';
 
 const KEY = 'voiceCoach.settings.v1';
 
@@ -9,7 +9,7 @@ const DEFAULTS = {
   vowel1: 'A', // vowels sung by the recorded voices on note 1 / note 2
   vowel2: 'A',
   intervals: INTERVALS.map((i) => i.semis),
-  direction: 'asc', // 'asc' | 'desc' | 'random'
+  direction: 'asc', // 'asc' | 'desc' | 'random' | 'harm' (Interval ID only: both notes together)
   root: 'random', // 'random' | MIDI number
   ranges: {}, // per-instrument custom random-root range: { [instrument]: [lo, hi] }
   noteDur: 1.0,
@@ -22,6 +22,7 @@ const DEFAULTS = {
   holdTime: 2, // Single Note, pitch following: seconds to hold the note
   autoNext: false,
   hideSpectrum: true, // Interval ID: hide the spectrum until answered (peak gaps reveal the interval)
+  harmSolo: false, // Interval ID, notes played together: also show each note's spectrum alone
   rangeRegister: 'chest', // Vocal Range: register of the siren
   sirenStyle: 'vowel', // Vocal Range: 'vowel' | 'nasal' | 'trill'
   keepAlive: true, // play inaudible noise so Bluetooth audio doesn't power down between notes // Interval ID: go to the next interval after a correct answer
@@ -208,6 +209,7 @@ export function initSettingsUI() {
   bindCheck('octaveTolerant');
   bindCheck('autoNext');
   bindCheck('hideSpectrum');
+  bindCheck('harmSolo');
   bindCheck('keepAlive');
 }
 

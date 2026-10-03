@@ -1,9 +1,9 @@
 // Interval identification: hear two notes, pick the interval.
-import { INTERVALS, intervalBySemis, midiToName, midiToFreq, pickItem } from './music.js?v=20261002235214';
+import { INTERVALS, intervalBySemis, midiToName, midiToFreq, pickItem } from './music.js?v=20261003002250';
 // (no room-noise controls in this tab: the spectrum is the app's own playback)
-import { makeSpectrumAnalyser } from './audio.js?v=20261002235214';
-import { LOG_FREQS, logSpectrum, findPeaks, cleanSpectrum, spectralCentroid, perceptualCentroid, drawSpectrum } from './spectrum.js?v=20261002235214';
-import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261002235214';
+import { makeSpectrumAnalyser } from './audio.js?v=20261003002250';
+import { LOG_FREQS, logSpectrum, findPeaks, cleanSpectrum, spectralCentroid, perceptualCentroid, chordPartials, roughness, drawSpectrum } from './spectrum.js?v=20261003002250';
+import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261003002250';
 
 const $ = (id) => document.getElementById(id);
 const AUTO_NEXT_DELAY = 1200; // ms to show a correct answer before moving on
@@ -13,6 +13,8 @@ const SPECTRUM_INTERVAL = 50; // ms between spectrum reads while notes play
 const NOTE_SKIP = 0.2;
 const LOOSE_SKIP = 0.1; // fallback for notes too short for a clean window (may keep a faint trace)
 const FFT_SIZE = 8192; // ~0.17 s window at 48 kHz: short enough for clean frames even in 0.4 s notes
+const fmtHz = (f) => (f >= 1000 ? `${(f / 1000).toFixed(2)} kHz` : `${Math.round(f)} Hz`);
+const noteFloor = (m) => 440 * 2 ** ((m - 1 - 69) / 12); // a semitone below the note: analysis starts here
 const freshStats = () => ({ total: 0, correct: 0, streak: 0, best: 0, per: {} });
 
 export class IdentifyMode {
@@ -36,6 +38,11 @@ export class IdentifyMode {
     };
     // Spectrum of the played notes
     $('idRaw').onchange = () => this.renderSpectrum();
+    // Shown only for notes played together
+    this.onSoloChange = () => {
+      if (settings.harmSolo && this.spec?.together && !this.spec.live) this.renderSolo();
+      this.renderSpectrum();
+    };
     new ResizeObserver(() => this.renderSpectrum()).observe($('idSpectrum'));
     this.renderAnswers();
     this.renderStats();
@@ -83,15 +90,16 @@ export class IdentifyMode {
 
   /** Play a different interval from the same root (to hear what the user chose). */
   async playSemis(semis) {
-    const sign = this.item.dir === 'asc' ? 1 : -1;
+    const sign = this.item.dir === 'desc' ? -1 : 1;
     await this.playNotes([this.item.root, this.item.root + sign * semis]);
   }
 
   async playNotes(midis) {
     this.engine.stopAll();
-    const r = await this.engine.playSequence(instrumentFor(this.item), midis, { dur: settings.noteDur, vowels: vowelsFor(this.item) });
+    const together = this.item.dir === 'harm';
+    const r = await this.engine.playSequence(instrumentFor(this.item), midis, { dur: settings.noteDur, vowels: vowelsFor(this.item), together });
     this.status.fallback(r.fallback);
-    this.captureSpectra(r, midis, settings.noteDur);
+    this.captureSpectra(r, midis, settings.noteDur, together);
   }
 
   // ---- Spectrum of the played notes ------------------------------------------------
@@ -99,8 +107,9 @@ export class IdentifyMode {
   /**
    * While the two notes play, read the output spectrum every SPECTRUM_INTERVAL, draw it live,
    * and average each note's steady part. Note 1 stays as a pale curve under note 2.
+   * With `together` (harmonic interval) there is one window: the spectrum of both notes at once.
    */
-  captureSpectra(r, midis, dur) {
+  captureSpectra(r, midis, dur, together = false) {
     const ctx = this.engine.ctx;
     if (!this.analyser) {
       // Own analyser on the playback: shorter window and no frame-to-frame smoothing, so a
@@ -114,7 +123,7 @@ export class IdentifyMode {
     const token = (this.specToken = (this.specToken ?? 0) + 1);
     const half = an.fftSize / 2 / ctx.sampleRate; // the window spans [t - half, t + half] around t = now - half
     const lag = half;
-    const windows = [[r.start, r.start + dur], [r.end - dur, r.end]];
+    const windows = together ? [[r.start, r.end]] : [[r.start, r.start + dur], [r.end - dur, r.end]];
     const sums = [new Float64Array(LOG_FREQS.length), new Float64Array(LOG_FREQS.length)];
     const counts = [0, 0];
     // Fallback for very short notes, where no whole window fits: window centre inside the note.
@@ -126,7 +135,7 @@ export class IdentifyMode {
       const [sum, n] = counts[k] ? [sums[k], counts[k]] : [looseSums[k], looseCounts[k]];
       return n ? Float32Array.from(sum, (v) => 10 * Math.log10(v / n + 1e-20)) : null;
     };
-    this.spec = { midis, notes: [null, null], live: null };
+    this.spec = { midis, notes: [null, null], live: null, together };
     const timer = setInterval(() => {
       if (token !== this.specToken) { clearInterval(timer); return; }
       const t = ctx.currentTime - lag;
@@ -141,11 +150,46 @@ export class IdentifyMode {
           looseCounts[k]++;
         }
       });
-      this.spec.notes = [avg(0), avg(1)];
-      this.spec.live = t < r.end + 0.05 ? { s, buf: buf.slice(), binHz, k: t < windows[1][0] ? 0 : 1 } : null;
+      this.spec.notes = windows.map((_, k) => avg(k));
+      this.spec.live = t < r.end + 0.05 ? { s, buf: buf.slice(), binHz, k: together || t < windows[1][0] ? 0 : 1 } : null;
       this.renderSpectrum();
-      if (t > r.end + 0.05) clearInterval(timer);
+      if (t > r.end + 0.05) {
+        clearInterval(timer);
+        if (together && settings.harmSolo) this.renderSolo();
+      }
     }, SPECTRUM_INTERVAL);
+  }
+
+  /**
+   * Notes played together: render each note alone silently (offline, at its share of the
+   * chord's level) and average its spectrum the same way as a played note.
+   */
+  async renderSolo() {
+    const sp = this.spec;
+    if (!sp?.together || sp.solo || sp.soloPending) return;
+    sp.soloPending = true;
+    const dur = settings.noteDur;
+    const sr = this.engine.ensure().sampleRate;
+    const win = FFT_SIZE / sr;
+    const times = [];
+    for (let t = NOTE_SKIP + win; t <= dur + 1e-6; t += SPECTRUM_INTERVAL / 1000) times.push(t);
+    if (!times.length) times.push(dur); // very short notes: one window ending with the note
+    const vowels = vowelsFor(this.item);
+    const solo = await Promise.all(sp.midis.map(async (m, i) => {
+      const frames = await this.engine.offlineFrames(instrumentFor(this.item), m, {
+        dur, vowel: vowels[i], gain: 1 / Math.sqrt(2), fftSize: FFT_SIZE, times,
+      });
+      const sum = new Float64Array(LOG_FREQS.length);
+      for (const f of frames) {
+        const s = logSpectrum(f, sr / FFT_SIZE);
+        for (let k = 0; k < s.length; k++) sum[k] += 10 ** (s[k] / 10);
+      }
+      return Float32Array.from(sum, (v) => 10 * Math.log10(v / frames.length + 1e-20));
+    }));
+    sp.soloPending = false;
+    if (this.spec !== sp) return; // a newer interval has been played meanwhile
+    sp.solo = solo;
+    this.renderSpectrum();
   }
 
   /**
@@ -160,6 +204,7 @@ export class IdentifyMode {
     const unfiltered = $('idRaw').checked;
     const view = (db, midi) => (unfiltered ? db : cleanSpectrum(db, 440 * 2 ** ((midi - 1 - 69) / 12)));
     const common = { hideFreqLabels: !reveal, hidePeakLegend: !reveal, ghostLabel: 'pale: note 1' };
+    $('harmSoloWrap').hidden = !(sp?.together || settings.direction === 'harm');
     if (!sp) {
       drawSpectrum(canvas, { ...common, live: null, sourceLabel: 'Press New interval to hear (and see) two notes' });
       return;
@@ -169,6 +214,38 @@ export class IdentifyMode {
       return;
     }
     const [m1, m2] = sp.midis;
+    const low = Math.min(m1, m2);
+    if (sp.together) {
+      // Both notes at once: one spectrum. After answering, each note's harmonics are marked
+      // (shared ones filled) with the roughest beating pairs bracketed.
+      const db = sp.live ? sp.live.s : sp.notes[0];
+      if (!db) return;
+      const opts = { ...common, live: view(db, low), sourceLabel: sp.live ? 'playing both notes' : 'both notes together' };
+      if (!reveal || sp.live) {
+        opts.peaks = findPeaks(db, sp.live?.buf ?? null, sp.live?.binHz ?? 0, { minFreq: noteFloor(low) });
+      } else {
+        const partials = chordPartials(db, [midiToFreq(m1), midiToFreq(m2)]);
+        const rough = roughness(partials);
+        opts.partials = partials;
+        // The roughest pairs: comparable to the worst one and a real share of the total
+        const worst = rough.pairs[0]?.d ?? 0;
+        opts.roughPairs = rough.pairs.filter((p) => p.d > 0 && p.d >= 0.4 * worst && p.d >= 0.03 * rough.total).slice(0, 6);
+        const [lowName, highName] = [m1, m2].map((m) => midiToName(m));
+        opts.legend = [
+          { color: '--accent', text: `${lowName} harmonics` },
+          { color: '--good', text: `${highName} harmonics` },
+          { color: '--bad', text: 'shared by both', filled: true },
+          ...(opts.roughPairs.length ? [{ color: '--warn', text: 'beating pair (rough)', bracket: true }] : []),
+        ];
+        if (settings.harmSolo && sp.solo) {
+          opts.extras = [{ db: view(sp.solo[0], m1), color: '--accent' }, { db: view(sp.solo[1], m2), color: '--good' }];
+          opts.sourceLabel = 'both notes together; thin: each note alone';
+        }
+      }
+      drawSpectrum(canvas, opts);
+      if (!sp.live) this.renderBrightness();
+      return;
+    }
     if (sp.live) {
       const k = sp.live.k;
       const midi = sp.midis[k];
@@ -193,15 +270,59 @@ export class IdentifyMode {
     this.renderBrightness();
   }
 
-  /** After answering: each note's brightness (spectral centroid) and how it moves vs. the pitch. */
+  /**
+   * After answering: each note's brightness (spectral centroid) and how it moves vs. the pitch.
+   * Notes played together: the chord's brightness and roughness (plus the per-note comparison
+   * when "Each note alone" is on).
+   */
   renderBrightness() {
     const sp = this.spec;
     const box = $('idBright');
-    if (!this.answered || !sp?.notes[0] || !sp.notes[1]) { box.innerHTML = ''; return; }
+    if (!this.answered || !sp) { box.innerHTML = ''; return; }
+    if (sp.together) {
+      const parts = [this.chordReadout()];
+      if (settings.harmSolo) parts.push(sp.solo ? this.brightnessComparison(sp.solo) : '<div>Rendering each note alone…</div>');
+      box.innerHTML = parts.filter(Boolean).join('');
+      return;
+    }
+    box.innerHTML = this.brightnessComparison(sp.notes);
+  }
+
+  /** Brightness of the two notes played together, and their roughness vs. other intervals. */
+  chordReadout() {
+    const sp = this.spec;
+    const db = sp.notes[0];
+    if (!db) return '';
     const [m1, m2] = sp.midis;
-    const fmin = (m) => 440 * 2 ** ((m - 1 - 69) / 12);
-    const fmt = (f) => (f >= 1000 ? `${(f / 1000).toFixed(2)} kHz` : `${Math.round(f)} Hz`);
+    const lo = noteFloor(Math.min(m1, m2));
+    const lin = spectralCentroid(db, lo);
+    const per = perceptualCentroid(db, lo);
+    let html = lin && per ? `<div><b>Brightness</b> (both notes together): linear ${fmtHz(lin)}, perceptual ${fmtHz(per)}</div>` : '';
+    // Roughness: how much the two notes' partials beat against each other. The same partials,
+    // moved to every other interval, give this sound's own dissonance curve for comparison.
+    const partials = chordPartials(db, [midiToFreq(m1), midiToFreq(m2)]);
+    const actual = m2 - m1;
+    const curve = INTERVALS.map((iv) => ({ iv, r: roughness(partials, iv.semis - actual).total }));
+    const max = Math.max(...curve.map((c) => c.r));
+    if (!(max > 0)) return html;
+    const now = roughness(partials).total;
+    const roughest = curve.reduce((a, b) => (b.r > a.r ? b : a));
+    const pct = (r) => Math.round((100 * r) / max);
+    const bars = curve.map(({ iv, r }) => `<span class="${iv.semis === actual ? 'now' : ''}" title="${iv.name}: ${pct(r)}%">`
+      + `<i style="height:${Math.max(2, pct(r))}%"></i><small>${iv.short}</small></span>`).join('');
+    html += `<div class="rough-line"><b>Roughness</b> (beating between the two notes' partials):
+      ${pct(now)}% of the roughest interval for this sound (${roughest.iv.short}).
+      Shared (filled) harmonics fuse the notes; close pairs (bracketed) beat.</div>
+      <div class="rough-curve" title="Roughness of each interval, from this sound's partials">${bars}</div>`;
+    return html;
+  }
+
+  /** Two notes' spectra compared: pitch shift vs. brightness shift (three measures). */
+  brightnessComparison(notes) {
+    const [m1, m2] = this.spec.midis;
+    if (!notes?.[0] || !notes[1]) return '';
     const pitchUp = m2 > m1;
+    const unison = m2 === m1;
     // A semitone shift as the nearest interval, e.g. 15.2 → "≈ octave + m3 up"
     const asInterval = (semis) => {
       const n = Math.round(Math.abs(semis));
@@ -217,32 +338,33 @@ export class IdentifyMode {
       ['Linear', 'power-weighted centroid in Hz', spectralCentroid],
       ['Perceptual', 'loudness-weighted centroid on the ERB scale', perceptualCentroid],
     ].map(([name, title, fn]) => {
-      const c1 = fn(sp.notes[0], fmin(m1));
-      const c2 = fn(sp.notes[1], fmin(m2));
+      const c1 = fn(notes[0], noteFloor(m1));
+      const c2 = fn(notes[1], noteFloor(m2));
       if (!c1 || !c2) return null;
       const semis = 12 * Math.log2(c2 / c1);
       const bright = Math.abs(semis) < 1 ? 'about the same' : semis > 0 ? 'brighter' : 'darker';
-      const clash = Math.abs(semis) >= 1 && (semis > 0) !== pitchUp;
-      return { name, clash, html: `<span title="${title}">${name}:</span> ${fmt(c1)} → ${fmt(c2)}
-        (${semis >= 0 ? '+' : '−'}${Math.abs(semis).toFixed(1)} st ≈ ${asInterval(semis)}, ${bright})` };
+      const clash = !unison && Math.abs(semis) >= 1 && (semis > 0) !== pitchUp;
+      return { name, clash, html: `<span title="${title}">${name}:</span> ${fmtHz(c1)} → ${fmtHz(c2)}
+        (${semis > -0.05 ? '+' : '−'}${Math.abs(semis).toFixed(1)} st ≈ ${asInterval(semis)}, ${bright})` };
     }).filter(Boolean);
-    if (!measures.length) { box.innerHTML = ''; return; }
+    if (!measures.length) return '';
     const clashing = measures.filter((m) => m.clash).map((m) => m.name.toLowerCase());
     // Linear centroid in harmonic numbers (÷ f0): the spectrum's shape relative to the note.
     // In semitones, linear brightness shift = pitch shift + this shift.
     let harmonic = '';
-    const l1 = spectralCentroid(sp.notes[0], fmin(m1));
-    const l2 = spectralCentroid(sp.notes[1], fmin(m2));
+    const l1 = spectralCentroid(notes[0], noteFloor(m1));
+    const l2 = spectralCentroid(notes[1], noteFloor(m2));
     if (l1 && l2) {
       const h1 = l1 / midiToFreq(m1);
       const h2 = l2 / midiToFreq(m2);
       const semis = 12 * Math.log2(h2 / h1);
       harmonic = `<br><span title="linear centroid ÷ fundamental: around which harmonic the energy sits. Linear shift = pitch shift + this shift">Harmonic:</span>
-        ${h1.toFixed(1)} → ${h2.toFixed(1)} (${semis >= 0 ? '+' : '−'}${Math.abs(semis).toFixed(1)} st; pitch + harmonic = linear)`;
+        ${h1.toFixed(1)} → ${h2.toFixed(1)} (${semis > -0.05 ? '+' : '−'}${Math.abs(semis).toFixed(1)} st; pitch + harmonic = linear)`;
     }
-    box.innerHTML = `<b>Brightness</b> (spectral centroid) vs. pitch<br>
-      Pitch: ${m2 > m1 ? '+' : '−'}${Math.abs(m2 - m1)} st = ${asInterval(m2 - m1)}<br>${measures.map((m) => m.html).join('<br>')}${harmonic}
-      ${clashing.length ? `<span class="clash">The pitch goes ${pitchUp ? 'up' : 'down'} but the brightness goes ${pitchUp ? 'down' : 'up'}${clashing.length < measures.length ? ` (${clashing[0]} measure)` : ''}: a common reason an interval can sound ${pitchUp ? 'descending' : 'ascending'}.</span>` : ''}`;
+    const heading = this.spec.together ? '<b>Each note alone</b>: brightness vs. pitch' : '<b>Brightness</b> (spectral centroid) vs. pitch';
+    return `<div>${heading}<br>
+      Pitch: ${unison ? '0 st = unison' : `${pitchUp ? '+' : '−'}${Math.abs(m2 - m1)} st = ${asInterval(m2 - m1)}`}<br>${measures.map((m) => m.html).join('<br>')}${harmonic}
+      ${clashing.length ? `<span class="clash">The pitch goes ${pitchUp ? 'up' : 'down'} but the brightness goes ${pitchUp ? 'down' : 'up'}${clashing.length < measures.length ? ` (${clashing[0]} measure)` : ''}: a common reason an interval can sound ${pitchUp ? 'descending' : 'ascending'}.</span>` : ''}</div>`;
   }
 
   renderAnswers() {
@@ -275,7 +397,7 @@ export class IdentifyMode {
     if (ok) p.c++;
 
     this.renderAnswers();
-    const desc = `${midiToName(item.root)} → ${midiToName(item.second)} · ${item.interval.name}, ${item.dir === 'asc' ? 'ascending' : 'descending'}${soundText(item)}`;
+    const desc = `${midiToName(item.root)} ${item.dir === 'harm' ? '+' : '→'} ${midiToName(item.second)} · ${item.interval.name}${item.interval.semis === 0 ? '' : `, ${{ asc: 'ascending', desc: 'descending', harm: 'harmonic (together)' }[item.dir]}`}${soundText(item)}`;
     const chosen = intervalBySemis(semis);
     $('idFeedback').innerHTML = `
       <div class="verdict ${ok ? 'ok' : 'no'}">${ok ? '✓ Correct!' : `✗ Not quite — you chose ${chosen.name}`}</div>

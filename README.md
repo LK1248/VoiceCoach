@@ -6,7 +6,7 @@ A browser-based singing coach. No build step — plain HTML/CSS/ES modules.
 
 ## Modes
 
-- **Interval ID** — hear two notes, identify the interval (m2 … octave).
+- **Interval ID** — hear two notes (ascending, descending or together), identify the interval (unison … minor 9th). After answering: the notes' spectrum and brightness vs. pitch; for notes played together, which harmonics they share, which beat, and a roughness curve for that sound.
 - **Single Note** — *pitch alignment*: hear a note, sing it as many times as you like; each attempt is scored and graphed over the earlier ones. *Pitch following*: hold each note within tolerance for a set time to advance to the next; successes are counted per run. Notes come from a range (vertical slider) with per-note checkboxes.
 - **Interval Singing** — hear two notes, sing them back; live pitch tracking, per-note cents accuracy and steadiness, and reference-vs-take comparison playback.
 - **Vocal Range** — siren up and down in a chosen register (Chest, Head, Falsetto, Mix; Whistle, Fry) on a vowel, nasal "ng" or lip trill. Measures full range, usable range (extremes held ~0.5 s) and the range within the register; marks register switches (pitch cracks / sudden H1–H2 changes) as crack, abrupt or gradual, with the up/down gap; compares the session's range with conventional voice types.

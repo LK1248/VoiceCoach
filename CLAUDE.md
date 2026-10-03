@@ -71,5 +71,5 @@ Do not loosen these without re-checking against `recordings/`:
 - Voice type is shown as a rough "closest / also consistent" guide with caveats, never a verdict.
 - Bluetooth: keep-alive noise (on by default), latency compensation from `outputLatency` + mic `latency`.
 - Keyboard shortcuts: N new, A replay/hear, Space next, R try again (singing), interval keys
-  2–8 (major/perfect) and W E T Y U (minor/tritone), S / D hear correct / your answer.
+  1–8 (unison, major/perfect) and W E T Y U I (minor/tritone, I = m9), S / D hear correct / your answer.
 - UI text: shortcut letters shown capitalised.

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Voice Coach</title>
-  <link rel="stylesheet" href="css/style.css?v=20261002235214">
+  <link rel="stylesheet" href="css/style.css?v=20261003002250">
 </head>
 <body data-mode="identify">
   <header class="topbar">
@@ -69,10 +69,11 @@
 
       <section data-only="identify sing">
         <h3>Direction</h3>
-        <div class="seg">
+        <div class="seg grid2">
           <label><input type="radio" name="direction" value="asc"><span>↑ Ascending</span></label>
           <label><input type="radio" name="direction" value="desc"><span>↓ Descending</span></label>
           <label><input type="radio" name="direction" value="random"><span>Random</span></label>
+          <label data-only="identify" title="Both notes played together"><input type="radio" name="direction" value="harm"><span>Harmonic</span></label>
         </div>
       </section>
 
@@ -134,11 +135,12 @@
           <div class="feedback" id="idFeedback"></div>
           <div class="spectrum-box">
             <div class="spectrum-head">
-              <div class="field-label">Spectrum of the played notes: note 1 pale, note 2 solid.
+              <div class="field-label">Spectrum of the played notes: note 1 pale, note 2 solid (one curve when played together).
                 Frequencies and the brightness readout are revealed after you answer.</div>
               <div class="noise-ctl">
                 <label class="check" title="The gaps between peaks give the interval away: show the spectrum only after you answer"><input type="checkbox" id="hideSpectrum"> Hide until answered</label>
                 <label class="check" title="Show the raw analysis: no smoothing between peaks, no below-f0 cut"><input type="checkbox" id="idRaw"> Unfiltered</label>
+                <label class="check" id="harmSoloWrap" hidden title="Notes played together: after you answer, also show each note's spectrum on its own (rendered silently) and compare their brightness"><input type="checkbox" id="harmSolo"> Each note alone</label>
               </div>
             </div>
             <canvas id="idSpectrum" class="spectrum-canvas"></canvas>
@@ -273,6 +275,6 @@
     <a href="https://github.com/gleitz/midi-js-soundfonts" target="_blank" rel="noopener">midi-js-soundfonts</a>.
   </footer>
 
-  <script type="module" src="js/main.js?v=20261002235214"></script>
+  <script type="module" src="js/main.js?v=20261003002250"></script>
 </body>
 </html>

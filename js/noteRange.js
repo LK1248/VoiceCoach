@@ -1,9 +1,9 @@
 // Single Note theme: vertical note-range slider (two handles, highest note at
 // the top) with a checkbox beside each note in the range. Moving a handle
 // re-enables every note in the new range.
-import { NOTE_MIN, NOTE_MAX, instrumentRange } from './instruments.js?v=20261002235214';
-import { midiToName } from './music.js?v=20261002235214';
-import { settings, settingChanged } from './settings.js?v=20261002235214';
+import { NOTE_MIN, NOTE_MAX, instrumentRange } from './instruments.js?v=20261003002250';
+import { midiToName } from './music.js?v=20261003002250';
+import { settings, settingChanged } from './settings.js?v=20261003002250';
 
 const ROW = 16; // px per semitone
 

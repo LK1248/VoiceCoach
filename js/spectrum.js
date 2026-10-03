@@ -1,6 +1,6 @@
 // Live spectrum (log frequency × dB) with the first spectral peaks marked and
 // the target note's harmonics as guides. Used by Single Note → Pitch alignment.
-import { midiToName, freqToMidi } from './music.js?v=20261002235214';
+import { midiToName, freqToMidi } from './music.js?v=20261003002250';
 
 const FMIN = 50;
 const FMAX = 8000;
@@ -144,6 +144,73 @@ export function perceptualCentroid(s, minFreq = FMIN) {
   return den ? erbRateToHz(num / den) : null;
 }
 
+// ---- Two notes played together -------------------------------------------------------
+
+const PARTIAL_PROMINENCE_DB = 6; // a harmonic counts as present if it stands this far above its surroundings
+const SHARED_CENTS = 25; // harmonics of the two notes closer than this coincide (fuse)
+
+/**
+ * The harmonics of each note (f0s in Hz) found in a log-grid spectrum of both notes together.
+ * Returns [{ note, n, freq, db, shared }] for harmonics that are present (prominent, within
+ * PERCEPTUAL_RANGE_DB of the loudest); `shared` marks harmonics coinciding with one of the other
+ * note's (both are listed, with the same level).
+ */
+export function chordPartials(s, f0s) {
+  const i0 = firstIndexAbove(Math.min(...f0s) * 2 ** (-1 / 12));
+  let max = -Infinity;
+  for (let i = i0; i < s.length; i++) max = Math.max(max, s[i]);
+  const out = [];
+  f0s.forEach((f0, note) => {
+    for (let n = 1; n * f0 <= FMAX; n++) {
+      const freq = n * f0;
+      const c = Math.round(Math.log2(freq / FMIN) * PPO);
+      if (c < 0) continue;
+      let db = -Infinity;
+      for (let i = Math.max(0, c - 1); i <= Math.min(s.length - 1, c + 1); i++) db = Math.max(db, s[i]);
+      let base = Infinity;
+      for (let i = Math.max(0, c - 4); i <= Math.min(s.length - 1, c + 4); i++) base = Math.min(base, s[i]);
+      if (db >= max - PERCEPTUAL_RANGE_DB && db - base >= PARTIAL_PROMINENCE_DB) out.push({ note, n, freq, db, shared: false });
+    }
+  });
+  for (const a of out) {
+    if (a.note !== 0) continue;
+    for (const b of out) {
+      if (b.note === 1 && Math.abs(1200 * Math.log2(b.freq / a.freq)) < SHARED_CENTS) {
+        a.shared = b.shared = true;
+        b.db = a.db = Math.max(a.db, b.db);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Sensory roughness between the two notes' partials (Plomp & Levelt's curve in Sethares'
+ * form): each pair of partials from different notes beats most at about a quarter of a
+ * critical band apart, weighted by the weaker partial's amplitude. `shift` (semitones) moves
+ * note 2's partials, for "what if the interval were different".
+ * Returns { total, pairs: [{ a, b, d }] } with pairs sorted roughest first.
+ */
+export function roughness(partials, shift = 0) {
+  const k = 2 ** (shift / 12);
+  const pairs = [];
+  let total = 0;
+  for (const a of partials) {
+    if (a.note !== 0) continue;
+    for (const b of partials) {
+      if (b.note !== 1) continue;
+      const fb = b.freq * k;
+      const sc = 0.24 / (0.0207 * Math.min(a.freq, fb) + 18.96);
+      const df = Math.abs(fb - a.freq);
+      const d = Math.min(10 ** (a.db / 20), 10 ** (b.db / 20)) * (Math.exp(-3.5 * sc * df) - Math.exp(-5.75 * sc * df));
+      total += d;
+      pairs.push({ a, b, d });
+    }
+  }
+  pairs.sort((p, q) => q.d - p.d);
+  return { total, pairs };
+}
+
 /** First log-grid index at or above f. */
 const firstIndexAbove = (f) => Math.max(0, Math.ceil(Math.log2(f / FMIN) * PPO - 1e-9));
 
@@ -204,11 +271,15 @@ function refineOnBins(raw, binHz, f) {
 
 /**
  * Draw the spectrum. `live` and `ghost` are log-grid dB arrays (either may be null).
- * `target` (MIDI) adds dashed guides at its harmonics.
+ * `target` (MIDI) adds dashed guides at its harmonics. Two notes together: `extras` adds thin
+ * curves ([{ db, color }], e.g. each note alone), `partials` marks each note's harmonics
+ * ([{ freq, db, note, shared }]), `roughPairs` brackets beating partial pairs ([{ a, b }]),
+ * and `legend` adds coloured key entries ([{ color, text, filled, bracket }]).
  */
 export function drawSpectrum(canvas, {
   live, ghost, noise, target, sourceLabel, peaks, minFreq,
   ghostLabel = 'pale: reference (last played)', hideFreqLabels = false, hidePeakLegend = false,
+  extras = [], partials = null, roughPairs = [], legend = [],
 }) {
   const dpr = window.devicePixelRatio || 1;
   const w = canvas.clientWidth;
@@ -310,6 +381,33 @@ export function drawSpectrum(canvas, {
   }
   if (ghost) stroke(curve(ghost), col('--pale'), 2);
   if (live) stroke(curve(live), col('--text'), 1.5, col('--target'));
+  for (const e of extras) {
+    g.globalAlpha = 0.85;
+    stroke(curve(e.db), col(e.color), 1.2);
+    g.globalAlpha = 1;
+  }
+
+  // Beating pairs: a bracket above the two partials
+  for (const { a, b } of roughPairs) {
+    const by = Math.max(padT + 4, Math.min(y(a.db), y(b.db)) - 12);
+    g.strokeStyle = col('--warn');
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(x(a.freq), by + 5); g.lineTo(x(a.freq), by); g.lineTo(x(b.freq), by); g.lineTo(x(b.freq), by + 5);
+    g.stroke();
+  }
+  // Each note's harmonics: open circles per note, filled where the two notes share one
+  if (partials) {
+    for (const p of partials) {
+      if (p.shared && p.note === 1) continue; // drawn once, with note 1's
+      const color = col(p.shared ? '--bad' : p.note === 0 ? '--accent' : '--good');
+      g.beginPath(); g.arc(x(p.freq), y(p.db), 4, 0, 2 * Math.PI);
+      g.lineWidth = 2;
+      g.strokeStyle = color;
+      g.stroke();
+      if (p.shared) { g.fillStyle = color; g.fill(); }
+    }
+  }
 
   // Peaks: numbered circles on the curve; details in a legend box (top right).
   if (peaks?.length) {
@@ -357,5 +455,20 @@ export function drawSpectrum(canvas, {
   g.fillStyle = col('--muted');
   let ly = padT + 26;
   if (ghost) { g.fillText(ghostLabel, padL + 4, ly); ly += 14; }
-  if (noise) g.fillText('dotted: room noise (subtracted)', padL + 4, ly);
+  if (noise) { g.fillText('dotted: room noise (subtracted)', padL + 4, ly); ly += 14; }
+  for (const item of legend) {
+    g.beginPath();
+    if (item.bracket) {
+      g.moveTo(padL + 3, ly - 1); g.lineTo(padL + 3, ly - 6); g.lineTo(padL + 13, ly - 6); g.lineTo(padL + 13, ly - 1);
+    } else {
+      g.arc(padL + 8, ly - 4, 4, 0, 2 * Math.PI);
+    }
+    g.strokeStyle = col(item.color);
+    g.lineWidth = 2;
+    g.stroke();
+    if (item.filled) { g.fillStyle = col(item.color); g.fill(); }
+    g.fillStyle = col('--muted');
+    g.fillText(item.text, padL + 16, ly);
+    ly += 14;
+  }
 }

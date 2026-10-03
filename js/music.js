@@ -1,4 +1,4 @@
-import { pickInstrument } from './instruments.js?v=20261002235214';
+import { pickInstrument } from './instruments.js?v=20261003002250';
 
 // Music theory helpers: note names, frequencies, intervals.
 
@@ -8,6 +8,7 @@ export const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A',
 // `key`: keyboard shortcut — major/perfect intervals on the digit row, minor
 // intervals and the tritone on the letters between them (like black keys).
 export const INTERVALS = [
+  { semis: 0, short: 'P1', name: 'Unison', key: '1' },
   { semis: 1, short: 'm2', name: 'Minor 2nd', key: 'w' },
   { semis: 2, short: 'M2', name: 'Major 2nd', key: '2' },
   { semis: 3, short: 'm3', name: 'Minor 3rd', key: 'e' },
@@ -20,6 +21,7 @@ export const INTERVALS = [
   { semis: 10, short: 'm7', name: 'Minor 7th', key: 'u' },
   { semis: 11, short: 'M7', name: 'Major 7th', key: '7' },
   { semis: 12, short: 'P8', name: 'Octave', key: '8' },
+  { semis: 13, short: 'm9', name: 'Minor 9th', key: 'i' },
 ];
 
 export const intervalBySemis = (s) => INTERVALS.find((i) => i.semis === s);
@@ -43,8 +45,9 @@ export function pickItem(s, range, previous) {
 
   for (let attempt = 0; attempt < 8; attempt++) {
     const interval = randChoice(active);
+    // 'harm' (harmonic: both notes together) builds the interval upwards from the root.
     const dir = s.direction === 'random' ? (Math.random() < 0.5 ? 'asc' : 'desc') : s.direction;
-    const sign = dir === 'asc' ? 1 : -1;
+    const sign = dir === 'desc' ? -1 : 1;
 
     let root;
     if (s.root === 'random') {

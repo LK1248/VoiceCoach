@@ -1,12 +1,12 @@
-import { AudioEngine } from './audio.js?v=20261002235214';
-import { MicRecorder } from './recorder.js?v=20261002235214';
-import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261002235214';
-import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20261002235214';
-import { IdentifyMode } from './identify.js?v=20261002235214';
-import { SingMode } from './sing.js?v=20261002235214';
-import { RangeMode } from './range.js?v=20261002235214';
-import { SingleMode } from './single.js?v=20261002235214';
-import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261002235214';
+import { AudioEngine } from './audio.js?v=20261003002250';
+import { MicRecorder } from './recorder.js?v=20261003002250';
+import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261003002250';
+import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20261003002250';
+import { IdentifyMode } from './identify.js?v=20261003002250';
+import { SingMode } from './sing.js?v=20261003002250';
+import { RangeMode } from './range.js?v=20261003002250';
+import { SingleMode } from './single.js?v=20261003002250';
+import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261003002250';
 
 const engine = new AudioEngine();
 const recorder = new MicRecorder(engine);
@@ -81,6 +81,8 @@ onSettingsChange((field) => {
   modes.range.onSettings(field);
   if (field === 'intervals') modes.identify.renderAnswers();
   if (field === 'hideSpectrum') modes.identify.renderSpectrum();
+  if (field === 'harmSolo') modes.identify.onSoloChange();
+  if (field === 'direction') modes.identify.renderSpectrum(); // shows or hides "Each note alone"
   modes.sing.onSettings(field);
 });
 
@@ -102,7 +104,7 @@ document.querySelectorAll('.tab[data-mode]').forEach((tab) => {
 });
 
 // Keyboard shortcuts (handled per mode): N = new interval, Space = next, A = replay,
-// interval answer keys 2–8 / W E T Y U, S = hear correct, D = hear your answer,
+// interval answer keys 1–8 / W E T Y U I, S = hear correct, D = hear your answer,
 // R = try again (singing).
 document.addEventListener('keydown', (e) => {
   if (e.target.matches?.('select, textarea, input[type="text"], input[type="number"]') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
