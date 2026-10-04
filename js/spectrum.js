@@ -1,6 +1,6 @@
 // Live spectrum (log frequency × dB) with the first spectral peaks marked and
 // the target note's harmonics as guides. Used by Single Note → Pitch alignment.
-import { midiToName, freqToMidi } from './music.js?v=20261003002250';
+import { midiToName, freqToMidi } from './music.js?v=20261004144326';
 
 const FMIN = 50;
 const FMAX = 8000;
@@ -91,13 +91,24 @@ function peakIndices(s, { count = Infinity, prominence = PEAK_PROMINENCE_DB, ran
   return found;
 }
 
+const HARMONIC_TOL_CENTS = 60; // a peak this close to a multiple of f0 is one of the note's harmonics
+
 /**
  * The first `count` prominent peaks of a log-grid spectrum, lowest frequency
  * first: [{ freq, db }]. Each frequency is refined on the raw FFT bins.
+ * With `f0` (Hz, the note known to be sounding) only its harmonics are returned: other real
+ * components (e.g. a voice's brief subharmonics) stay on the curve but aren't marked.
  */
-export function findPeaks(s, raw, binHz, { count = PEAKS, minFreq = FMIN } = {}) {
+export function findPeaks(s, raw, binHz, { count = PEAKS, minFreq = FMIN, f0 = null } = {}) {
   // `raw` (FFT bins) refines the frequency; without it (averaged spectra) the grid frequency is used.
-  return peakIndices(s, { count, minFreq }).map((i) => ({ freq: raw ? refineOnBins(raw, binHz, LOG_FREQS[i]) : LOG_FREQS[i], db: s[i] }));
+  const peaks = peakIndices(s, { count: f0 ? Infinity : count, minFreq })
+    .map((i) => ({ freq: raw ? refineOnBins(raw, binHz, LOG_FREQS[i]) : LOG_FREQS[i], db: s[i] }));
+  if (!f0) return peaks;
+  const isHarmonic = ({ freq }) => {
+    const n = Math.max(1, Math.round(freq / f0));
+    return Math.abs(1200 * Math.log2(freq / (n * f0))) <= HARMONIC_TOL_CENTS;
+  };
+  return peaks.filter(isHarmonic).slice(0, count);
 }
 
 /**

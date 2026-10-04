@@ -1,9 +1,9 @@
 // Interval identification: hear two notes, pick the interval.
-import { INTERVALS, intervalBySemis, midiToName, midiToFreq, pickItem } from './music.js?v=20261003002250';
+import { INTERVALS, intervalBySemis, midiToName, midiToFreq, pickItem } from './music.js?v=20261004144326';
 // (no room-noise controls in this tab: the spectrum is the app's own playback)
-import { makeSpectrumAnalyser } from './audio.js?v=20261003002250';
-import { LOG_FREQS, logSpectrum, findPeaks, cleanSpectrum, spectralCentroid, perceptualCentroid, chordPartials, roughness, drawSpectrum } from './spectrum.js?v=20261003002250';
-import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261003002250';
+import { makeSpectrumAnalyser } from './audio.js?v=20261004144326';
+import { LOG_FREQS, logSpectrum, findPeaks, cleanSpectrum, spectralCentroid, perceptualCentroid, chordPartials, roughness, drawSpectrum } from './spectrum.js?v=20261004144326';
+import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261004144326';
 
 const $ = (id) => document.getElementById(id);
 const AUTO_NEXT_DELAY = 1200; // ms to show a correct answer before moving on
@@ -254,7 +254,7 @@ export class IdentifyMode {
         live: view(sp.live.s, midi),
         ghost: k === 1 && sp.notes[0] ? view(sp.notes[0], m1) : null,
         sourceLabel: `playing note ${k + 1}`,
-        peaks: findPeaks(sp.live.s, sp.live.buf, sp.live.binHz, { minFreq: 440 * 2 ** ((midi - 1 - 69) / 12) }),
+        peaks: findPeaks(sp.live.s, sp.live.buf, sp.live.binHz, { minFreq: noteFloor(midi), f0: midiToFreq(midi) }),
       });
       return;
     }
@@ -265,7 +265,7 @@ export class IdentifyMode {
       live: view(n2, m2),
       ghost: n1 ? view(n1, m1) : null,
       sourceLabel: 'solid: note 2',
-      peaks: findPeaks(n2, null, 0, { minFreq: 440 * 2 ** ((m2 - 1 - 69) / 12) }),
+      peaks: findPeaks(n2, null, 0, { minFreq: noteFloor(m2), f0: midiToFreq(m2) }),
     });
     this.renderBrightness();
   }
