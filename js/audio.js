@@ -1,6 +1,6 @@
 // Audio playback: sampled instruments (loaded on demand) with a synth fallback.
-import { INSTRUMENTS } from './instruments.js?v=20261004144326';
-import { midiToName, midiToFreq } from './music.js?v=20261004144326';
+import { INSTRUMENTS } from './instruments.js?v=20261005223728';
+import { midiToName, midiToFreq } from './music.js?v=20261005223728';
 
 const SF_BASE = 'https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM';
 const VOICE_BASE = 'samples/voices/';
@@ -156,7 +156,10 @@ export class AudioEngine {
    * AudioContext time; `fallback` is true if any sample failed and a synth
    * tone was used instead.
    */
-  /** Play notes one after another, or all at once with `together` (an interval as a chord). */
+  /**
+   * Play notes one after another, or all at once with `together` (an interval as a chord).
+   * `dur` is one length for all notes or a list with one per note.
+   */
   async playSequence(instKey, midis, { dur = 1, gap = 0.08, when, gain = 1, vowels = [], together = false } = {}) {
     const ctx = this.ensure();
     const inst = INSTRUMENTS[instKey];
@@ -166,14 +169,15 @@ export class AudioEngine {
     const fallback = !!(inst.sf || inst.vocalset) && samples.some((s) => !s);
     let t = when ?? ctx.currentTime + 0.06;
     const start = t;
+    const durOf = (i) => (Array.isArray(dur) ? dur[i] : dur);
     if (together) {
       // Equal-power share so the chord is about as loud as a single note.
-      midis.forEach((m, i) => this.playNote(samples[i], m, t, dur, gain * (inst.gain ?? 1) / Math.sqrt(midis.length), inst.wave));
-      return { start, end: t + dur, fallback };
+      midis.forEach((m, i) => this.playNote(samples[i], m, t, durOf(i), gain * (inst.gain ?? 1) / Math.sqrt(midis.length), inst.wave));
+      return { start, end: t + Math.max(...midis.map((_, i) => durOf(i))), fallback };
     }
     midis.forEach((m, i) => {
-      this.playNote(samples[i], m, t, dur, gain * (inst.gain ?? 1), inst.wave);
-      t += dur + gap;
+      this.playNote(samples[i], m, t, durOf(i), gain * (inst.gain ?? 1), inst.wave);
+      t += durOf(i) + gap;
     });
     return { start, end: t - gap, fallback };
   }

@@ -1,11 +1,11 @@
 // Single Note theme: vertical note-range slider (two handles, highest note at
 // the top) with a checkbox beside each note in the range. Moving a handle
 // re-enables every note in the new range.
-import { NOTE_MIN, NOTE_MAX, instrumentRange } from './instruments.js?v=20261004144326';
-import { midiToName } from './music.js?v=20261004144326';
-import { settings, settingChanged } from './settings.js?v=20261004144326';
+import { NOTE_MIN, NOTE_MAX, instrumentRange } from './instruments.js?v=20261005223728';
+import { midiToName } from './music.js?v=20261005223728';
+import { settings, settingChanged } from './settings.js?v=20261005223728';
 
-const ROW = 16; // px per semitone
+const ROW = matchMedia('(pointer: coarse)').matches ? 30 : 16; // px per semitone (taller for fingers)
 
 /** [lo, hi] MIDI range; follows the instrument's default until the user sets one. */
 export const getSingleRange = () => settings.singleRange ?? instrumentRange(settings.instrument);
@@ -36,6 +36,7 @@ export function initNoteRangeUI(root, { onHear } = {}) {
   const thumbs = { hi: root.querySelector('[data-end="hi"]'), lo: root.querySelector('[data-end="lo"]') };
   const list = root.querySelector('.nr-list');
   root.style.height = `${(NOTE_MAX - NOTE_MIN + 1) * ROW}px`;
+  root.style.setProperty('--nr-row', `${ROW}px`);
 
   for (let m = NOTE_MAX; m >= NOTE_MIN; m--) {
     const row = document.createElement('label');

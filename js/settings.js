@@ -1,6 +1,6 @@
 // Shared exercise settings, persisted in localStorage, bound to the sidebar UI.
-import { INTERVALS, midiToName } from './music.js?v=20261004144326';
-import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, instrumentRange } from './instruments.js?v=20261004144326';
+import { INTERVALS, midiToName } from './music.js?v=20261005223728';
+import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, instrumentRange } from './instruments.js?v=20261005223728';
 
 const KEY = 'voiceCoach.settings.v1';
 
@@ -13,6 +13,7 @@ const DEFAULTS = {
   root: 'random', // 'random' | MIDI number
   ranges: {}, // per-instrument custom random-root range: { [instrument]: [lo, hi] }
   noteDur: 1.0,
+  randomDur: false, // Interval ID: each note gets its own random length, MIN_NOTE_DUR…noteDur
   showInterval: true,
   octaveTolerant: true,
   singStart: 'countdown', // Interval Singing: 'countdown' | 'detect' (start when singing is heard)
@@ -48,6 +49,18 @@ function load() {
 }
 
 export const settings = load();
+export const MIN_NOTE_DUR = 0.4; // s: shortest note length (the slider's minimum)
+
+/**
+ * Interval ID: the lengths (s) of an item's two notes. With "Random length" each note has its
+ * own, drawn when the item was picked (so replays match), between the minimum and the slider
+ * value; notes played together share the first one.
+ */
+export const noteDursFor = (item) => {
+  if (!settings.randomDur) return [settings.noteDur, settings.noteDur];
+  const durs = (item?.randomDurs ?? [1, 1]).map((u) => MIN_NOTE_DUR + u * (settings.noteDur - MIN_NOTE_DUR));
+  return item?.dir === 'harm' ? [durs[0], durs[0]] : durs;
+};
 const listeners = [];
 
 export const onSettingsChange = (fn) => listeners.push(fn);
@@ -208,6 +221,7 @@ export function initSettingsUI() {
   bindCheck('showInterval');
   bindCheck('octaveTolerant');
   bindCheck('autoNext');
+  bindCheck('randomDur');
   bindCheck('hideSpectrum');
   bindCheck('harmSolo');
   bindCheck('keepAlive');

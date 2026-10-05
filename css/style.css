@@ -65,6 +65,7 @@ body {
 .tab:hover:not(:disabled) { background: var(--panel-2); color: var(--text); }
 .tab.active { background: var(--accent-soft); color: var(--accent); }
 .tab:disabled { opacity: 0.45; cursor: default; }
+.settings-btn, .sheet-head, .sheet-backdrop { display: none; } /* phones only (see the end of this file) */
 
 /* Layout */
 .layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; padding: 20px; max-width: 1280px; margin: 0 auto; }
@@ -208,7 +209,7 @@ canvas.pitch-canvas { width: 100%; height: 260px; display: block; background: va
 .nr-thumb:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .nr-list { position: absolute; left: 36px; right: 0; top: 0; bottom: 0; }
 .nr-row {
-  position: absolute; left: 0; right: 0; height: 16px; display: flex; align-items: center; gap: 6px;
+  position: absolute; left: 0; right: 0; height: var(--nr-row, 16px); display: flex; align-items: center; gap: 6px;
   font-size: 11px; line-height: 16px; padding-left: 4px; border-radius: 3px; cursor: pointer;
 }
 .nr-row.black { background: var(--black-key); }
@@ -269,3 +270,101 @@ canvas.summary-canvas { width: 100%; height: 240px; display: block; margin-top: 
 .rough-curve span.now i { background: var(--warn); }
 .rough-curve small { font-size: 10px; color: var(--muted); line-height: 14px; }
 .rough-curve span.now small { color: var(--text); font-weight: 600; }
+
+/* ---- Phones and narrow windows ------------------------------------------------------
+   The exercise comes first; settings move into a bottom sheet opened from the top bar;
+   the theme tabs become one strip that scrolls sideways. */
+@media (max-width: 860px) {
+  .topbar {
+    gap: 4px 12px; padding: 8px 12px 0;
+    padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right));
+    padding-top: max(8px, env(safe-area-inset-top));
+  }
+  .brand { font-size: 16px; }
+  .logo { font-size: 20px; }
+  .settings-btn { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
+  .tabs {
+    flex: 1 0 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain;
+    margin: 0 -12px; padding: 0 12px 6px; scroll-padding: 0 12px;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: none; white-space: nowrap; }
+
+  .layout {
+    padding: 12px; gap: 12px;
+    padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right));
+  }
+  .view { gap: 12px; }
+  .card { padding: 14px; }
+  .credits { padding: 4px 16px calc(20px + env(safe-area-inset-bottom)); }
+
+  /* Settings: bottom sheet */
+  .settings {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    max-height: 85vh; max-height: 85dvh; overflow-y: auto; overscroll-behavior: contain;
+    border-radius: 16px 16px 0 0; border-bottom: none;
+    padding: 0 16px calc(16px + env(safe-area-inset-bottom));
+    transform: translateY(100%); visibility: hidden;
+    transition: transform 0.25s ease, visibility 0s 0.25s;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.25);
+  }
+  body.sheet-open .settings { transform: none; visibility: visible; transition: transform 0.25s ease; }
+  body.sheet-open { overflow: hidden; } /* the page behind doesn't scroll */
+  .sheet-head {
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 1; background: var(--panel);
+    margin: 0 -16px; padding: 18px 16px 10px; border-bottom: 1px solid var(--border);
+  }
+  .sheet-head::before { /* grab handle */
+    content: ""; position: absolute; top: 7px; left: 50%; width: 36px; height: 4px; margin-left: -18px;
+    border-radius: 2px; background: var(--border);
+  }
+  .sheet-head h2 { margin: 0; font-size: 17px; }
+  .sheet-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 19; background: rgba(0, 0, 0, 0.45);
+    opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+  }
+  body.sheet-open .sheet-backdrop { opacity: 1; pointer-events: auto; }
+
+  .controls .auto-next { margin-left: 0; flex-basis: 100%; }
+  .summary { gap: 16px; }
+  .bars { grid-template-columns: 92px 1fr 56px; }
+  .save-take { margin-left: 0; }
+  canvas.spectrum-canvas, canvas.summary-canvas { height: 210px; }
+  canvas.pitch-canvas { height: 230px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings, .sheet-backdrop { transition: none !important; }
+}
+
+/* Narrow phones: all the answer buttons on one screen (short names only) */
+@media (max-width: 560px) {
+  .answers { grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 14px; }
+  .answers button { padding: 6px 2px; min-height: 52px; }
+  .answers button small { display: none; }
+  .interval-label { font-size: 22px; }
+}
+
+/* Touch screens: finger-sized targets, no keyboard hints, no zoom-on-focus (16px inputs) */
+@media (pointer: coarse) {
+  button, .tab { min-height: 44px; }
+  button.small, button.link { min-height: 38px; padding: 6px 12px; }
+  button.link { padding-left: 0; }
+  select { min-height: 44px; font-size: 16px; }
+  kbd { display: none; }
+  .seg span { padding: 11px 4px; font-size: 14px; }
+  .chip { min-height: 40px; font-size: 14px; }
+  .check { min-height: 36px; margin: 4px 0; }
+  .noise-ctl .check { font-size: 14px; }
+  input[type="checkbox"] { width: 20px; height: 20px; flex: none; }
+  input[type="range"] { height: 32px; }
+  .hold-setting input { width: 140px; }
+  .vowel-row { grid-template-columns: 1fr; gap: 2px; }
+  .nr-track { width: 40px; }
+  .nr-rail, .nr-fill { left: 18px; }
+  .nr-thumb { left: 6px; width: 28px; height: 28px; margin-top: -14px; }
+  .nr-list { left: 48px; }
+  .nr-row { font-size: 13px; }
+  .nr-row input { width: 20px; height: 20px; }
+  .nr-hear { min-height: 0; height: 24px; line-height: 20px; font-size: 11px; padding: 0 12px; }
+}

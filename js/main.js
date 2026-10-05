@@ -1,12 +1,12 @@
-import { AudioEngine } from './audio.js?v=20261004144326';
-import { MicRecorder } from './recorder.js?v=20261004144326';
-import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261004144326';
-import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20261004144326';
-import { IdentifyMode } from './identify.js?v=20261004144326';
-import { SingMode } from './sing.js?v=20261004144326';
-import { RangeMode } from './range.js?v=20261004144326';
-import { SingleMode } from './single.js?v=20261004144326';
-import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261004144326';
+import { AudioEngine } from './audio.js?v=20261005223728';
+import { MicRecorder } from './recorder.js?v=20261005223728';
+import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261005223728';
+import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20261005223728';
+import { IdentifyMode } from './identify.js?v=20261005223728';
+import { SingMode } from './sing.js?v=20261005223728';
+import { RangeMode } from './range.js?v=20261005223728';
+import { SingleMode } from './single.js?v=20261005223728';
+import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261005223728';
 
 const engine = new AudioEngine();
 const recorder = new MicRecorder(engine);
@@ -86,6 +86,25 @@ onSettingsChange((field) => {
   modes.sing.onSettings(field);
 });
 
+// Phones: the settings panel is a bottom sheet opened from the top bar.
+{
+  const sheet = document.getElementById('settings');
+  const btn = document.getElementById('settingsBtn');
+  const narrow = matchMedia('(max-width: 860px)');
+  const setOpen = (open) => {
+    document.body.classList.toggle('sheet-open', open);
+    btn.setAttribute('aria-expanded', open);
+    sheet.inert = narrow.matches && !open; // closed sheet: out of the tab order
+    if (open) sheet.scrollTop = 0;
+  };
+  btn.onclick = () => setOpen(!document.body.classList.contains('sheet-open'));
+  document.getElementById('settingsDone').onclick = () => setOpen(false);
+  document.getElementById('sheetBackdrop').onclick = () => setOpen(false);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOpen(false); });
+  narrow.addEventListener('change', () => setOpen(false));
+  setOpen(false);
+}
+
 // Tabs
 let mode = 'identify';
 document.querySelectorAll('.tab[data-mode]').forEach((tab) => {
@@ -97,6 +116,7 @@ document.querySelectorAll('.tab[data-mode]').forEach((tab) => {
     mode = tab.dataset.mode;
     document.body.dataset.mode = mode;
     document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t === tab));
+    tab.scrollIntoView({ block: 'nearest', inline: 'center' }); // phones: the tab strip scrolls sideways
     document.querySelectorAll('.view').forEach((v) => { v.hidden = v.id !== `view-${mode}`; });
     if (mode === 'sing') modes.sing.draw();
     modes[mode].activate?.();

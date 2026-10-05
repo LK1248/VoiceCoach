@@ -1,4 +1,4 @@
-import { pickInstrument } from './instruments.js?v=20261004144326';
+import { pickInstrument } from './instruments.js?v=20261005223728';
 
 // Music theory helpers: note names, frequencies, intervals.
 
@@ -67,7 +67,9 @@ export function pickItem(s, range, previous) {
     const randomVowels = [randChoice(VOWEL_KEYS), randChoice(VOWEL_KEYS)];
     const second = root + sign * interval.semis;
     // Likewise the instrument, used when the instrument setting is Random.
-    const item = { root, second, interval, dir, randomVowels, instrument: pickInstrument([root, second]) };
+    // And each note's length (0–1 of the allowed span), used when note length is set to Random.
+    const randomDurs = [Math.random(), Math.random()];
+    const item = { root, second, interval, dir, randomVowels, randomDurs, instrument: pickInstrument([root, second]) };
     // Avoid repeating the exact same item twice in a row when there's a choice.
     if (!previous || previous.root !== item.root || previous.second !== item.second) return item;
   }

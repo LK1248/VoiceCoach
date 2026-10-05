@@ -1,9 +1,9 @@
 // Interval identification: hear two notes, pick the interval.
-import { INTERVALS, intervalBySemis, midiToName, midiToFreq, pickItem } from './music.js?v=20261004144326';
+import { INTERVALS, intervalBySemis, midiToName, midiToFreq, pickItem } from './music.js?v=20261005223728';
 // (no room-noise controls in this tab: the spectrum is the app's own playback)
-import { makeSpectrumAnalyser } from './audio.js?v=20261004144326';
-import { LOG_FREQS, logSpectrum, findPeaks, cleanSpectrum, spectralCentroid, perceptualCentroid, chordPartials, roughness, drawSpectrum } from './spectrum.js?v=20261004144326';
-import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261004144326';
+import { makeSpectrumAnalyser } from './audio.js?v=20261005223728';
+import { LOG_FREQS, logSpectrum, findPeaks, cleanSpectrum, spectralCentroid, perceptualCentroid, chordPartials, roughness, drawSpectrum } from './spectrum.js?v=20261005223728';
+import { settings, getRange, vowelsFor, soundText, instrumentFor, noteDursFor } from './settings.js?v=20261005223728';
 
 const $ = (id) => document.getElementById(id);
 const AUTO_NEXT_DELAY = 1200; // ms to show a correct answer before moving on
@@ -97,9 +97,10 @@ export class IdentifyMode {
   async playNotes(midis) {
     this.engine.stopAll();
     const together = this.item.dir === 'harm';
-    const r = await this.engine.playSequence(instrumentFor(this.item), midis, { dur: settings.noteDur, vowels: vowelsFor(this.item), together });
+    const durs = noteDursFor(this.item);
+    const r = await this.engine.playSequence(instrumentFor(this.item), midis, { dur: durs, vowels: vowelsFor(this.item), together });
     this.status.fallback(r.fallback);
-    this.captureSpectra(r, midis, settings.noteDur, together);
+    this.captureSpectra(r, midis, durs, together);
   }
 
   // ---- Spectrum of the played notes ------------------------------------------------
@@ -109,7 +110,7 @@ export class IdentifyMode {
    * and average each note's steady part. Note 1 stays as a pale curve under note 2.
    * With `together` (harmonic interval) there is one window: the spectrum of both notes at once.
    */
-  captureSpectra(r, midis, dur, together = false) {
+  captureSpectra(r, midis, durs, together = false) {
     const ctx = this.engine.ctx;
     if (!this.analyser) {
       // Own analyser on the playback: shorter window and no frame-to-frame smoothing, so a
@@ -123,7 +124,7 @@ export class IdentifyMode {
     const token = (this.specToken = (this.specToken ?? 0) + 1);
     const half = an.fftSize / 2 / ctx.sampleRate; // the window spans [t - half, t + half] around t = now - half
     const lag = half;
-    const windows = together ? [[r.start, r.end]] : [[r.start, r.start + dur], [r.end - dur, r.end]];
+    const windows = together ? [[r.start, r.end]] : [[r.start, r.start + durs[0]], [r.end - durs[1], r.end]];
     const sums = [new Float64Array(LOG_FREQS.length), new Float64Array(LOG_FREQS.length)];
     const counts = [0, 0];
     // Fallback for very short notes, where no whole window fits: window centre inside the note.
@@ -135,7 +136,7 @@ export class IdentifyMode {
       const [sum, n] = counts[k] ? [sums[k], counts[k]] : [looseSums[k], looseCounts[k]];
       return n ? Float32Array.from(sum, (v) => 10 * Math.log10(v / n + 1e-20)) : null;
     };
-    this.spec = { midis, notes: [null, null], live: null, together };
+    this.spec = { midis, durs, notes: [null, null], live: null, together };
     const timer = setInterval(() => {
       if (token !== this.specToken) { clearInterval(timer); return; }
       const t = ctx.currentTime - lag;
@@ -168,7 +169,7 @@ export class IdentifyMode {
     const sp = this.spec;
     if (!sp?.together || sp.solo || sp.soloPending) return;
     sp.soloPending = true;
-    const dur = settings.noteDur;
+    const dur = sp.durs[0]; // notes played together share one length
     const sr = this.engine.ensure().sampleRate;
     const win = FFT_SIZE / sr;
     const times = [];
@@ -397,7 +398,9 @@ export class IdentifyMode {
     if (ok) p.c++;
 
     this.renderAnswers();
-    const desc = `${midiToName(item.root)} ${item.dir === 'harm' ? '+' : '→'} ${midiToName(item.second)} · ${item.interval.name}${item.interval.semis === 0 ? '' : `, ${{ asc: 'ascending', desc: 'descending', harm: 'harmonic (together)' }[item.dir]}`}${soundText(item)}`;
+    const durs = noteDursFor(item);
+    const lengths = !settings.randomDur ? '' : ` · ${item.dir === 'harm' ? `length ${durs[0].toFixed(1)} s` : `lengths ${durs[0].toFixed(1)} s → ${durs[1].toFixed(1)} s`}`;
+    const desc = `${midiToName(item.root)} ${item.dir === 'harm' ? '+' : '→'} ${midiToName(item.second)} · ${item.interval.name}${item.interval.semis === 0 ? '' : `, ${{ asc: 'ascending', desc: 'descending', harm: 'harmonic (together)' }[item.dir]}`}${soundText(item)}${lengths}`;
     const chosen = intervalBySemis(semis);
     $('idFeedback').innerHTML = `
       <div class="verdict ${ok ? 'ok' : 'no'}">${ok ? '✓ Correct!' : `✗ Not quite — you chose ${chosen.name}`}</div>
