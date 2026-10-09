@@ -1,8 +1,8 @@
 // Microphone capture: raw PCM via an AudioWorklet (sample-accurate timing for
 // grading and playback alignment) plus live pitch frames.
-import { detectPitch } from './pitch.js?v=20261009132303';
-import { makeSpectrumAnalyser } from './audio.js?v=20261009132303';
-import { freqToMidi } from './music.js?v=20261009132303';
+import { detectPitch } from './pitch.js?v=20261009205629';
+import { makeSpectrumAnalyser } from './audio.js?v=20261009205629';
+import { freqToMidi } from './music.js?v=20261009205629';
 
 const CHUNK = 1024;
 const WINDOW = 2048;
@@ -71,6 +71,7 @@ export class MicRecorder {
 
     this.sr = ctx.sampleRate;
     const src = ctx.createMediaStreamSource(this.stream);
+    this.source = src; // for themes that attach their own analyser
     this.node = new AudioWorkletNode(ctx, 'rec-proc');
     const mute = ctx.createGain();
     mute.gain.value = 0; // keep the node pulled by the graph without monitoring the mic

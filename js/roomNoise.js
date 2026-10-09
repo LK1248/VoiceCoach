@@ -1,7 +1,7 @@
 // Room-noise calibration shared by the spectrum views (Single Note, Vocal Range):
 // one measured noise profile and one on/off state, with a Calibrate button,
 // "Subtract room noise" checkbox and status line in each view, kept in sync.
-import { LOG_FREQS, logSpectrum } from './spectrum.js?v=20261009132303';
+import { LOG_FREQS, logSpectrum } from './spectrum.js?v=20261009205629';
 
 const SETTLE_MS = 400; // let the analyser window clear before measuring
 const CAL_MS = 1500; // how long room noise is measured

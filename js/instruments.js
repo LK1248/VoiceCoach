@@ -10,6 +10,8 @@ export const INSTRUMENTS = {
   piano: { label: 'Piano', sf: 'acoustic_grand_piano', range: [48, 72], playable: [21, 108] }, // C3–C5
   guitarNylon: { label: 'Guitar (nylon)', sf: 'acoustic_guitar_nylon', range: [40, 64], playable: [40, 76] }, // E2–E4
   guitarSteel: { label: 'Guitar (steel)', sf: 'acoustic_guitar_steel', range: [40, 64], playable: [40, 76] },
+  guitarElectric: { label: 'Electric guitar', sf: 'electric_guitar_clean', range: [40, 64], playable: [40, 76] },
+  violin: { label: 'Violin', sf: 'violin', range: [55, 79], playable: [55, 96] }, // G3 up
   // Recorded notes are C3–D4 (male) and C4–D5 (female); ranges extend ±2 semitones.
   male: { label: 'Male voice', vocalset: 'male', range: [46, 64], gain: 0.5 }, // A#2–E4
   female: { label: 'Female voice', vocalset: 'female', range: [58, 76], gain: 0.5 }, // A#3–E5
@@ -31,6 +33,9 @@ export const VOWELS = [
   { key: 'O', hint: 'as in "oh"' },
   { key: 'U', hint: 'as in "moon"' },
 ];
+
+// Instruments offered for the backing chord (With Chords).
+export const BACKING = { piano: 'Piano', guitarSteel: 'Acoustic guitar', guitarElectric: 'Electric guitar', violin: 'Violin' };
 
 // "Random" instrument: a real instrument is drawn per exercise item.
 export const RANDOM = 'random';

@@ -1,6 +1,7 @@
 // Shared exercise settings, persisted in localStorage, bound to the sidebar UI.
-import { INTERVALS, midiToName } from './music.js?v=20261009132303';
-import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, instrumentRange } from './instruments.js?v=20261009132303';
+import { INTERVALS, DEGREES, midiToName } from './music.js?v=20261009205629';
+import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, BACKING, instrumentRange } from './instruments.js?v=20261009205629';
+import { SCALES, ARPEGGIOS, WARMUPS, FAMILIES } from './patterns.js?v=20261009205629';
 
 const KEY = 'voiceCoach.settings.v1';
 
@@ -28,6 +29,36 @@ const DEFAULTS = {
   rangeRegister: 'chest', // Vocal Range: register of the siren
   sirenStyle: 'vowel', // Vocal Range: 'vowel' | 'nasal' | 'trill'
   keepAlive: true, // play inaudible noise so Bluetooth audio doesn't power down between notes // Interval ID: go to the next interval after a correct answer
+  // Patterns
+  patFamily: 'scale', // 'scale' | 'arpeggio' | 'warmup' | 'random'
+  patScale: 'major', // scales and random melodies
+  patArp: 'maj',
+  patOctave: false, // arpeggios: add the octave on top
+  patWarm: 'five',
+  patQuality: 'major', // warm-ups: 'major' | 'minor'
+  patShape: 'updown', // scales and arpeggios: 'up' | 'down' | 'updown' | 'downup'
+  patCount: 5, // random melody: number of notes
+  patLeap: 5, // random melody: largest leap (semitones)
+  patStart: 'random', // tonic: 'random' | 'fixed' | 'step' (a semitone further each round)
+  patRoot: 48, // tonic for 'fixed'; where 'step' begins
+  patRange: [48, 72], // the whole pattern stays inside
+  patFlow: 'listen', // 'listen' (hear it, then sing) | 'along' (sing with it; headphones)
+  patDur: 0.8, // seconds per note
+  patShowNotes: true, // show note names and target bands while singing
+  patHideTrace: false, // hide the sung pitch until the take is finished
+  // With Chords
+  chInst: 'piano', // backing instrument
+  chQuality: 'major', // 'major' | 'minor' | 'random'
+  chKey: 'random', // 'random' | pitch class 0–11
+  chStyle: 'block', // 'block' (re-struck chord) | 'arp'
+  chBeat: 0.6, // seconds per beat (arpeggio note; a block chord is struck every 4 beats)
+  chVol: 0.5, // backing volume
+  chTarget: 'play', // how the note is given: 'play' (played first) | 'name' | 'degree'
+  chDegrees: [1, 2, 3, 4, 5, 6, 7], // scale degrees that may be asked for
+  chRange: [48, 72], // notes that may be asked for
+  chMode: 'align', // 'align' | 'follow'
+  chHold: 2, // pitch following: seconds to hold the note
+  chListen: 'phones', // 'phones' | 'speakers' (chord measured through the mic and subtracted)
   tolerance: 25, // cents
   singDur: 1.5, // seconds per sung note
 };
@@ -165,7 +196,8 @@ export function initSettingsUI() {
   });
 
   // Radio groups
-  for (const key of ['direction', 'singStart', 'singleMode', 'sirenStyle']) {
+  for (const key of ['direction', 'singStart', 'singleMode', 'sirenStyle', 'patQuality', 'patShape', 'patStart', 'patFlow',
+    'chQuality', 'chStyle', 'chTarget', 'chMode', 'chListen']) {
     document.querySelectorAll(`input[name="${key}"]`).forEach((r) => {
       r.checked = r.value === settings[key];
       r.onchange = () => { settings[key] = r.value; changed(key); };
@@ -214,6 +246,44 @@ export function initSettingsUI() {
     changed('range');
   };
 
+  // Patterns
+  const labels = (obj) => Object.entries(obj).map(([k, v]) => [k, v.label ?? v]);
+  const noteOptions = [];
+  for (let m = NOTE_MIN; m <= NOTE_MAX; m++) noteOptions.push([m, midiToName(m)]);
+  bindSelect('patFamily', labels(FAMILIES));
+  bindSelect('patScale', labels(SCALES));
+  bindSelect('patArp', labels(ARPEGGIOS));
+  bindSelect('patWarm', labels(WARMUPS));
+  bindSelect('patRoot', noteOptions, Number);
+  bindRangePair('patRange', 'patLo', 'patHi', noteOptions);
+  bindSlider('patDur', (v) => `${v.toFixed(1)} s`);
+  bindSlider('patCount', (v) => `${v} notes`);
+  bindSlider('patLeap', (v) => `${v} semitones`);
+  bindCheck('patOctave');
+  bindCheck('patShowNotes');
+  bindCheck('patHideTrace');
+
+  // With Chords
+  bindSelect('chInst', Object.entries(BACKING));
+  bindSelect('chKey', [['random', '🎲 Random'], ...['C', 'C# / Db', 'D', 'Eb', 'E', 'F', 'F# / Gb', 'G', 'Ab', 'A', 'Bb', 'B'].map((n, i) => [i, n])],
+    (v) => (v === 'random' ? v : Number(v)));
+  bindRangePair('chRange', 'chLo', 'chHi', noteOptions);
+  bindSlider('chBeat', (v) => `${v.toFixed(1)} s`);
+  bindSlider('chVol', (v) => `${Math.round(v * 100)}%`);
+  bindSlider('chHold', (v) => `${v.toFixed(1)} s`);
+  const degList = $('chDegreeList');
+  DEGREES.forEach((name, i) => {
+    const label = document.createElement('label');
+    label.className = 'chip';
+    label.innerHTML = `<input type="checkbox" value="${i + 1}"><span><b>${i + 1}</b> ${name}</span>`;
+    label.querySelector('input').checked = settings.chDegrees.includes(i + 1);
+    degList.append(label);
+  });
+  degList.onchange = () => {
+    settings.chDegrees = [...degList.querySelectorAll('input:checked')].map((cb) => +cb.value);
+    changed('chDegrees');
+  };
+
   // Sliders and checkboxes
   bindSlider('noteDur', (v) => `${v.toFixed(1)} s`);
   bindSlider('tolerance', (v) => `±${v} cents`);
@@ -237,6 +307,30 @@ function bindSlider(key, fmt) {
   el.oninput = () => {
     settings[key] = +el.value;
     out.textContent = fmt(settings[key]);
+    changed(key);
+  };
+}
+
+function bindSelect(key, options, parse = (v) => v) {
+  const el = $(key);
+  for (const [value, label] of options) el.add(new Option(label, value));
+  el.value = String(settings[key]);
+  if (el.selectedIndex < 0) { el.selectedIndex = 0; settings[key] = parse(el.value); } // saved value no longer offered
+  el.onchange = () => { settings[key] = parse(el.value); changed(key); };
+}
+
+/** Two note pickers bound to a [low, high] setting (kept in order). */
+function bindRangePair(key, loId, hiId, noteOptions) {
+  const lo = $(loId);
+  const hi = $(hiId);
+  for (const [value, label] of noteOptions) { lo.add(new Option(label, value)); hi.add(new Option(label, value)); }
+  const sync = () => { [lo.value, hi.value] = settings[key]; };
+  sync();
+  lo.onchange = hi.onchange = () => {
+    const a = +lo.value;
+    const b = +hi.value;
+    settings[key] = a <= b ? [a, b] : [b, a];
+    sync();
     changed(key);
   };
 }

@@ -82,7 +82,9 @@ body {
 body[data-mode="identify"] [data-only]:not([data-only~="identify"]),
 body[data-mode="single"] [data-only]:not([data-only~="single"]),
 body[data-mode="sing"] [data-only]:not([data-only~="sing"]),
-body[data-mode="range"] [data-only]:not([data-only~="range"]) { display: none; }
+body[data-mode="range"] [data-only]:not([data-only~="range"]),
+body[data-mode="pattern"] [data-only]:not([data-only~="pattern"]),
+body[data-mode="chord"] [data-only]:not([data-only~="chord"]) { display: none; }
 .settings .seg { margin: 4px 0 8px; }
 
 select, button { font: inherit; color: inherit; }
@@ -124,6 +126,8 @@ kbd { font-size: 11px; padding: 0 4px; border: 1px solid var(--border); border-r
 body[data-mode="sing"] .seg.grid2 label:nth-child(3) { grid-column: span 2; } /* Harmonic hidden there */
 
 .sub { margin-top: 10px; }
+.sub .field-label { margin-bottom: 3px; }
+.sub select + .check, .sub select + .seg, .sub .seg + .field-label, .sub .seg + .slider { margin-top: 8px; }
 .vowel-row { display: grid; grid-template-columns: 90px 1fr; align-items: center; gap: 8px; margin-bottom: 6px; }
 .range-row { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
 .range-row span { color: var(--muted); font-size: 13px; }
@@ -258,6 +262,13 @@ canvas.pitch-canvas { width: 100%; height: 260px; display: block; background: va
 .switches li.possible b { color: var(--warn); }
 canvas.summary-canvas { width: 100%; height: 240px; display: block; margin-top: 10px; }
 .voice-type { margin-top: 8px; font-size: 14px; }
+
+/* Patterns */
+.pattern-notes { font-size: 14px; font-weight: 500; color: var(--muted); margin-top: 2px; word-spacing: 2px; }
+.pattern-chips .chip-score { font-size: 13px; padding: 2px 8px; }
+.pattern-chips .chip-score b { font-weight: 600; margin-right: 2px; }
+#ptResults > .line { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.bars.wide { grid-template-columns: minmax(110px, 240px) 1fr 70px; }
 
 /* Interval ID spectrum */
 .bright-line { margin-top: 6px; font-size: 14px; }

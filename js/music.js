@@ -1,4 +1,4 @@
-import { pickInstrument } from './instruments.js?v=20261009132303';
+import { pickInstrument } from './instruments.js?v=20261009205629';
 
 // Music theory helpers: note names, frequencies, intervals.
 
@@ -23,6 +23,9 @@ export const INTERVALS = [
   { semis: 12, short: 'P8', name: 'Octave', key: '8' },
   { semis: 13, short: 'm9', name: 'Minor 9th', key: 'i' },
 ];
+
+// Scale-degree names (1 = the tonic).
+export const DEGREES = ['root', '2nd', '3rd', '4th', '5th', '6th', '7th'];
 
 export const intervalBySemis = (s) => INTERVALS.find((i) => i.semis === s);
 

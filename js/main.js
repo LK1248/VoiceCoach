@@ -1,12 +1,14 @@
-import { AudioEngine } from './audio.js?v=20261009132303';
-import { MicRecorder } from './recorder.js?v=20261009132303';
-import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261009132303';
-import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20261009132303';
-import { IdentifyMode } from './identify.js?v=20261009132303';
-import { SingMode } from './sing.js?v=20261009132303';
-import { RangeMode } from './range.js?v=20261009132303';
-import { SingleMode } from './single.js?v=20261009132303';
-import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261009132303';
+import { AudioEngine } from './audio.js?v=20261009205629';
+import { MicRecorder } from './recorder.js?v=20261009205629';
+import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261009205629';
+import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20261009205629';
+import { IdentifyMode } from './identify.js?v=20261009205629';
+import { SingMode } from './sing.js?v=20261009205629';
+import { RangeMode } from './range.js?v=20261009205629';
+import { PatternMode } from './pattern.js?v=20261009205629';
+import { ChordMode } from './chord.js?v=20261009205629';
+import { SingleMode } from './single.js?v=20261009205629';
+import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261009205629';
 
 const engine = new AudioEngine();
 const recorder = new MicRecorder(engine);
@@ -39,6 +41,8 @@ const modes = {
   identify: new IdentifyMode(engine, recorder, status),
   single: new SingleMode(engine, recorder, status),
   sing: new SingMode(engine, recorder, status),
+  pattern: new PatternMode(engine, recorder, status),
+  chord: new ChordMode(engine, recorder, status),
   range: new RangeMode(engine, recorder, status),
 };
 // Debug handle for in-browser tests (inspect modes / engine state); not used by the app.
@@ -85,6 +89,8 @@ onSettingsChange((field) => {
   if (field === 'hidePitch') modes.single.draw();
   if (field === 'direction') modes.identify.renderSpectrum(); // shows or hides "Each note alone"
   modes.sing.onSettings(field);
+  modes.pattern.onSettings(field);
+  modes.chord.onSettings(field);
 });
 
 // Phones: the settings panel is a bottom sheet opened from the top bar.
@@ -110,7 +116,7 @@ onSettingsChange((field) => {
 let mode = 'identify';
 document.querySelectorAll('.tab[data-mode]').forEach((tab) => {
   tab.onclick = () => {
-    if (modes.sing.busy) return; // don't switch away mid-recording
+    if (modes[mode].busy) return; // don't switch away mid-recording
     if (tab.dataset.mode === mode) return;
     modes[mode].deactivate?.();
     engine.stopAll();

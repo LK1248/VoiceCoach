@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Voice Coach</title>
-  <link rel="stylesheet" href="css/style.css?v=20261009132303">
+  <link rel="stylesheet" href="css/style.css?v=20261009205629">
 </head>
 <body data-mode="identify">
   <header class="topbar">
@@ -14,6 +14,8 @@
       <button class="tab active" data-mode="identify">Interval ID</button>
       <button class="tab" data-mode="single">Single Note</button>
       <button class="tab" data-mode="sing">Interval Singing</button>
+      <button class="tab" data-mode="pattern">Patterns</button>
+      <button class="tab" data-mode="chord">With Chords</button>
       <button class="tab" disabled title="Coming soon">Registers</button>
       <button class="tab" data-mode="range">Vocal Range</button>
     </nav>
@@ -27,12 +29,13 @@
         <h2>Settings</h2>
         <button id="settingsDone" class="primary">Done</button>
       </div>
-      <section data-only="identify single sing">
+      <section data-only="identify single sing pattern chord">
         <h3>Instrument</h3>
         <select id="instrument"></select>
+        <div class="hint" data-only="chord">Plays the note you sing. The chord's instrument is set below.</div>
         <div id="loadStatus" class="hint"></div>
         <div id="vowelBox" class="sub">
-          <div class="vowel-row"><span class="field-label"><span data-only="identify sing">Note 1 vowel</span><span data-only="single">Vowel</span></span><div class="seg" id="vowel1Seg"></div></div>
+          <div class="vowel-row"><span class="field-label"><span data-only="identify sing">Note 1 vowel</span><span data-only="single pattern chord">Vowel</span></span><div class="seg" id="vowel1Seg"></div></div>
           <div class="vowel-row" data-only="identify sing"><span class="field-label">Note 2 vowel</span><div class="seg" id="vowel2Seg"></div></div>
           <div class="hint">A "ahh" · E "bear" · I "greed" · O "oh" · U "moon"</div>
         </div>
@@ -104,20 +107,152 @@
         <label class="check" title="Each note gets its own random length, from 0.4 s up to the note length above"><input type="checkbox" id="randomDur"> Random length (0.4 s up to this)</label>
       </section>
 
-      <section data-only="sing single">
+      <section data-only="pattern">
+        <h3>Pattern</h3>
+        <select id="patFamily"></select>
+        <div id="patScaleRow" class="sub">
+          <div class="field-label">Scale</div>
+          <select id="patScale"></select>
+        </div>
+        <div id="patArpRow" class="sub">
+          <div class="field-label">Chord</div>
+          <select id="patArp"></select>
+          <label class="check"><input type="checkbox" id="patOctave"> Add the octave on top</label>
+        </div>
+        <div id="patWarmRow" class="sub">
+          <div class="field-label">Exercise</div>
+          <select id="patWarm"></select>
+          <div class="seg">
+            <label><input type="radio" name="patQuality" value="major"><span>Major</span></label>
+            <label><input type="radio" name="patQuality" value="minor"><span>Minor</span></label>
+          </div>
+        </div>
+        <div id="patShapeRow" class="sub">
+          <div class="field-label">Direction</div>
+          <div class="seg grid2">
+            <label><input type="radio" name="patShape" value="up"><span>↑ Up</span></label>
+            <label><input type="radio" name="patShape" value="down"><span>↓ Down</span></label>
+            <label><input type="radio" name="patShape" value="updown"><span>↑↓ Up &amp; down</span></label>
+            <label><input type="radio" name="patShape" value="downup"><span>↓↑ Down &amp; up</span></label>
+          </div>
+        </div>
+        <div id="patRandomRow" class="sub">
+          <label class="slider">Length <output id="patCountVal"></output>
+            <input type="range" id="patCount" min="3" max="8" step="1">
+          </label>
+          <label class="slider">Largest leap <output id="patLeapVal"></output>
+            <input type="range" id="patLeap" min="2" max="12" step="1">
+          </label>
+        </div>
+      </section>
+
+      <section data-only="pattern">
+        <h3>Starting note</h3>
+        <div class="seg">
+          <label title="A random key each round"><input type="radio" name="patStart" value="random"><span>Random</span></label>
+          <label title="Always the same key"><input type="radio" name="patStart" value="fixed"><span>Fixed</span></label>
+          <label title="A semitone further each round, turning around at the ends of the range"><input type="radio" name="patStart" value="step"><span>Step ↑</span></label>
+        </div>
+        <div id="patRootRow" class="sub">
+          <div class="field-label">Tonic (where stepping starts)</div>
+          <select id="patRoot"></select>
+        </div>
+        <div class="sub">
+          <div class="field-label">Range (the whole pattern stays inside)</div>
+          <div class="range-row">
+            <select id="patLo"></select><span>to</span><select id="patHi"></select>
+          </div>
+        </div>
+      </section>
+
+      <section data-only="pattern">
+        <h3>Practice</h3>
+        <div class="seg">
+          <label title="The pattern plays, then you sing it back"><input type="radio" name="patFlow" value="listen"><span>Hear, then sing</span></label>
+          <label title="Sing together with the pattern as it plays. Use headphones."><input type="radio" name="patFlow" value="along"><span>Sing along</span></label>
+        </div>
+        <label class="slider">Note length <output id="patDurVal"></output>
+          <input type="range" id="patDur" min="0.4" max="2" step="0.1">
+        </label>
+        <label class="check" title="Off: the notes and their target bands stay hidden until you have sung"><input type="checkbox" id="patShowNotes"> Show note names while singing</label>
+        <label class="check" title="Sing by ear: your pitch appears when the take ends"><input type="checkbox" id="patHideTrace"> Hide pitch graph while singing</label>
+      </section>
+
+      <section data-only="chord">
+        <h3>Backing chord</h3>
+        <select id="chInst"></select>
+        <div class="sub">
+          <div class="seg">
+            <label><input type="radio" name="chQuality" value="major"><span>Major</span></label>
+            <label><input type="radio" name="chQuality" value="minor"><span>Minor</span></label>
+            <label><input type="radio" name="chQuality" value="random"><span>Random</span></label>
+          </div>
+          <div class="field-label">Key</div>
+          <select id="chKey"></select>
+        </div>
+        <div class="sub">
+          <div class="seg">
+            <label title="Root, third, fifth and octave together, struck again as they fade"><input type="radio" name="chStyle" value="block"><span>Block chord</span></label>
+            <label title="The chord's notes one after another, in a loop"><input type="radio" name="chStyle" value="arp"><span>Arpeggio</span></label>
+          </div>
+          <label class="slider">Beat <output id="chBeatVal"></output>
+            <input type="range" id="chBeat" min="0.3" max="1" step="0.1">
+          </label>
+          <label class="slider">Volume <output id="chVolVal"></output>
+            <input type="range" id="chVol" min="0.1" max="1" step="0.05">
+          </label>
+        </div>
+      </section>
+
+      <section data-only="chord">
+        <h3>Note to sing</h3>
+        <div class="seg">
+          <label title="The note is played before the chord starts"><input type="radio" name="chTarget" value="play"><span>Played first</span></label>
+          <label title="You get the scale degree and the note's name"><input type="radio" name="chTarget" value="name"><span>Named</span></label>
+          <label title="You get only the scale degree; the name appears after an attempt"><input type="radio" name="chTarget" value="degree"><span>Degree only</span></label>
+        </div>
+        <div class="sub">
+          <div class="field-label">Scale degrees (major or natural minor scale)</div>
+          <div id="chDegreeList" class="checklist"></div>
+        </div>
+        <div class="sub">
+          <div class="field-label">Singing range</div>
+          <div class="range-row">
+            <select id="chLo"></select><span>to</span><select id="chHi"></select>
+          </div>
+        </div>
+      </section>
+
+      <section data-only="chord">
+        <h3>Exercise</h3>
+        <div class="seg">
+          <label title="Every attempt is scored; retry the same note as often as you like"><input type="radio" name="chMode" value="align"><span>Pitch alignment</span></label>
+          <label title="Hold the note in tune to move on to the next"><input type="radio" name="chMode" value="follow"><span>Pitch following</span></label>
+        </div>
+        <div class="sub">
+          <div class="field-label">Listening on</div>
+          <div class="seg">
+            <label title="The microphone hears only your voice: reliable"><input type="radio" name="chListen" value="phones"><span>Headphones</span></label>
+            <label title="The chord is measured through the microphone and subtracted: less reliable"><input type="radio" name="chListen" value="speakers"><span>Speakers</span></label>
+          </div>
+          <div class="hint">Speakers are best effort: the chord is measured through your microphone before each note and removed from what it hears.</div>
+        </div>
+      </section>
+
+      <section data-only="sing single pattern chord">
         <h3>Singing</h3>
         <label class="check" data-only="sing"><input type="checkbox" id="showInterval"> Show interval name while playing</label>
         <label class="check"><input type="checkbox" id="octaveTolerant"> Accept any octave</label>
-        <label class="check" data-only="single" title="Sing by ear: the pitch graph stays blank while you sing and appears when the attempt ends"><input type="checkbox" id="hidePitch"> Hide pitch graph while singing</label>
+        <label class="check" data-only="single chord" title="Sing by ear: the pitch graph stays blank while you sing and appears when the attempt ends"><input type="checkbox" id="hidePitch"> Hide pitch graph while singing</label>
         <label class="slider">Tolerance <output id="toleranceVal"></output>
           <input type="range" id="tolerance" min="10" max="100" step="5">
         </label>
-        <div class="field-label" data-only="sing">Start singing</div>
-        <div class="seg" data-only="sing">
+        <div class="field-label" data-only="sing pattern">Start singing</div>
+        <div class="seg" data-only="sing pattern">
           <label title="Three clicks, then sing"><input type="radio" name="singStart" value="countdown"><span>Count-in</span></label>
           <label title="Recording starts when you start singing"><input type="radio" name="singStart" value="detect"><span>Detect voice</span></label>
         </div>
-        <label class="slider">Note length (played &amp; sung) <output id="singDurVal"></output>
+        <label class="slider" data-only="sing single chord">Note length (played &amp; sung) <output id="singDurVal"></output>
           <input type="range" id="singDur" min="1" max="4" step="0.25">
         </label>
       </section>
@@ -273,6 +408,67 @@
           <div id="sgStats"></div>
         </div>
       </section>
+
+      <!-- Patterns: scales, arpeggios, warm-ups, random melodies -->
+      <section id="view-pattern" class="view" hidden>
+        <div class="card exercise">
+          <div class="prompt" id="ptPrompt"></div>
+          <div class="interval-label" id="ptLabel">&nbsp;</div>
+          <div class="controls">
+            <button id="ptStart" class="primary">▶ New pattern <kbd>N</kbd></button>
+            <button id="ptRetry" disabled>🎤 Try again <kbd>R</kbd></button>
+            <button id="ptHear" disabled>↻ Hear pattern <kbd>A</kbd></button>
+          </div>
+          <div class="phase-row">
+            <div class="phase" id="ptPhase">&nbsp;</div>
+            <div class="meter" title="Mic level"><div id="ptLevel"></div></div>
+          </div>
+          <canvas id="ptCanvas" class="pitch-canvas" height="260"></canvas>
+          <div id="ptResults" class="results"></div>
+          <div class="controls compare" id="ptCompare" hidden>
+            <span class="field-label">Compare:</span>
+            <button id="ptCmpRef">Reference</button>
+            <button id="ptCmpMine">My take</button>
+            <button id="ptCmpBoth">Both together</button>
+            <button id="ptCmpStop">■ Stop</button>
+          </div>
+        </div>
+        <div class="card stats">
+          <div class="stats-head"><h3>Session</h3><button id="ptResetStats" class="link">Reset</button></div>
+          <div id="ptStats"></div>
+        </div>
+      </section>
+
+      <!-- With Chords: sing one note over a backing chord -->
+      <section id="view-chord" class="view" hidden>
+        <div class="card exercise">
+          <div class="prompt" id="chPrompt"></div>
+          <div class="interval-label" id="chLabel">&nbsp;</div>
+          <div class="controls">
+            <button id="chNew" class="primary">▶ New note <kbd>N</kbd></button>
+            <button id="chHear" disabled>↻ Hear note <kbd>A</kbd></button>
+            <button id="chStop" disabled>■ Stop</button>
+          </div>
+          <div class="phase-row">
+            <div class="phase" id="chPhase">&nbsp;</div>
+            <div class="meter" title="Mic level"><div id="chLevel"></div></div>
+          </div>
+          <div id="chFollowBox" class="follow-box" hidden>
+            <div class="counter"><b id="chCounter">0</b><span>matched this run</span>
+              <button id="chResetRun" class="link">Reset run</button></div>
+            <div class="hold"><div class="hold-bar"><div id="chHoldFill"></div></div><span id="chHoldText"></span></div>
+            <label class="hold-setting" title="How long the note must be held in tune to count as a match">Hold for
+              <input type="range" id="chHold" min="0.5" max="5" step="0.5"> <output id="chHoldVal"></output>
+            </label>
+          </div>
+          <canvas id="chCanvas" class="pitch-canvas" height="260"></canvas>
+          <div id="chResults" class="results"></div>
+        </div>
+        <div class="card stats">
+          <div class="stats-head"><h3>Session</h3><button id="chResetStats" class="link">Reset</button></div>
+          <div id="chStats"></div>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -284,6 +480,6 @@
     <a href="https://github.com/gleitz/midi-js-soundfonts" target="_blank" rel="noopener">midi-js-soundfonts</a>.
   </footer>
 
-  <script type="module" src="js/main.js?v=20261009132303"></script>
+  <script type="module" src="js/main.js?v=20261009205629"></script>
 </body>
 </html>

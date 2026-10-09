@@ -1,6 +1,6 @@
 // Audio playback: sampled instruments (loaded on demand) with a synth fallback.
-import { INSTRUMENTS } from './instruments.js?v=20261009132303';
-import { midiToName, midiToFreq } from './music.js?v=20261009132303';
+import { INSTRUMENTS } from './instruments.js?v=20261009205629';
+import { midiToName, midiToFreq } from './music.js?v=20261009205629';
 
 const SF_BASE = 'https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM';
 const VOICE_BASE = 'samples/voices/';
@@ -182,7 +182,11 @@ export class AudioEngine {
     return { start, end: t - gap, fallback };
   }
 
-  /** `out` ({ ctx, dest }) renders into another context (offline analysis) instead of the speakers. */
+  /**
+   * `out` ({ ctx, dest }) plays into another destination — an offline context for analysis, or
+   * a separate bus (backing music) — and leaves the source untracked, so stopAll() won't stop it.
+   * Returns the source node.
+   */
   playNote(sample, midi, when, dur, gain = 1, wave = 'triangle', out = null) {
     const ctx = out?.ctx ?? this.ctx;
     const g = ctx.createGain();
@@ -209,6 +213,7 @@ export class AudioEngine {
     src.start(when);
     src.stop(when + dur + 0.5);
     if (!out) this._track(src);
+    return src;
   }
 
   /**

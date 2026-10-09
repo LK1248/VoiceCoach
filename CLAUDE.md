@@ -32,7 +32,8 @@ Live: https://lk1248.github.io/VoiceCoach/ (GitHub Pages from `main`, repo `LK12
 
 - `js/main.js` — wiring, tabs, keyboard shortcuts, sample preloading, routes mic frames to the active theme.
 - Themes: `identify.js` (Interval ID), `single.js` (Single Note: pitch alignment / following),
-  `sing.js` (Interval Singing), `range.js` (Vocal Range). Registers tab not built yet.
+  `sing.js` (Interval Singing), `pattern.js` (Patterns; definitions in `patterns.js`),
+  `chord.js` (With Chords), `range.js` (Vocal Range). Registers tab not built yet.
 - `audio.js` engine (sampled instruments, VocalSet voices with loop points, keep-alive noise,
   spectrum analyser on output); `recorder.js` (AudioWorklet mic capture, history buffer for
   back-dated starts, per-frame pitch + clarity + rms + H1–H2, spectrum analyser with 65 Hz HP).
@@ -62,6 +63,21 @@ Do not loosen these without re-checking against `recordings/`:
 - Known gap: a loud steady hum ≥ 65 Hz would be taken as singing (could use the room-noise profile).
 - The user's voice: flips **into head around G3–A3** going up, **back down around A♯3–B3**;
   chest siren top ≈ G4–B4; usable range roughly A♯2–C♯5. Mic picks up some low-frequency noise.
+
+## With Chords — speaker mode (`spectralPitch.js`), tested only by simulation so far
+
+- Headphones: the normal MPM frames are used. Speakers: the mic also hears the chord, so the
+  backing loop is measured alone first ("stay quiet"), as max-hold spectra **per 60 ms slice of
+  its cycle** (it is a fixed loop; slices are indexed by AudioContext time, so device latency
+  cancels). Pitch = harmonic-sum over what exceeds the matching slice's mask by 6 dB.
+- A single whole-cycle max-hold mask did not work: it is set by each strike's attack, 10–20 dB
+  above the decayed chord, and hid a voice as loud as the backing.
+- Simulated (app output fed back into the fake mic + sawtooth voice): correct with the voice
+  equal to or even below the backing level for piano/guitars, block and arpeggio. Fails when the
+  voice sings the **same pitch as a sustained (violin) chord note at equal level**; fine once the
+  voice is ~10 dB louder. Frames near each strike are unvoiced or wrong; medians still grade right.
+- Not yet tried on real speakers/rooms — expect to tune MARGIN_DB / MIN_SALIENCE with recordings.
+- The backing plays through its own gain bus (untracked by `engine.stopAll()`); `chord.js` stops it.
 
 ## Design decisions (agreed with the user)
 
