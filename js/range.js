@@ -3,11 +3,11 @@
 // and the range within the chosen register, marks register switches (pitch
 // cracks and sudden H1–H2 changes, i.e. chest ↔ head/falsetto flips) with how
 // abrupt they were, and relates the session's ranges to conventional voice types.
-import { midiToName, median } from './music.js?v=20261005223728';
-import { settings, settingChanged } from './settings.js?v=20261005223728';
-import { activeNoiseProfile, bindRoomNoiseControls } from './roomNoise.js?v=20261005223728';
-import { logSpectrum, findPeaks, cleanSpectrum, subtractNoise, drawSpectrum } from './spectrum.js?v=20261005223728';
-import { createPlot, drawTrace, drawMessage, drawPlayhead } from './plot.js?v=20261005223728';
+import { midiToName, median } from './music.js?v=20261009132303';
+import { settings, settingChanged } from './settings.js?v=20261009132303';
+import { activeNoiseProfile, bindRoomNoiseControls } from './roomNoise.js?v=20261009132303';
+import { logSpectrum, findPeaks, cleanSpectrum, subtractNoise, drawSpectrum } from './spectrum.js?v=20261009132303';
+import { createPlot, drawTrace, drawMessage, drawPlayhead } from './plot.js?v=20261009132303';
 
 const $ = (id) => document.getElementById(id);
 

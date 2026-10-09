@@ -1,12 +1,12 @@
-import { AudioEngine } from './audio.js?v=20261005223728';
-import { MicRecorder } from './recorder.js?v=20261005223728';
-import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261005223728';
-import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20261005223728';
-import { IdentifyMode } from './identify.js?v=20261005223728';
-import { SingMode } from './sing.js?v=20261005223728';
-import { RangeMode } from './range.js?v=20261005223728';
-import { SingleMode } from './single.js?v=20261005223728';
-import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261005223728';
+import { AudioEngine } from './audio.js?v=20261009132303';
+import { MicRecorder } from './recorder.js?v=20261009132303';
+import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261009132303';
+import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20261009132303';
+import { IdentifyMode } from './identify.js?v=20261009132303';
+import { SingMode } from './sing.js?v=20261009132303';
+import { RangeMode } from './range.js?v=20261009132303';
+import { SingleMode } from './single.js?v=20261009132303';
+import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261009132303';
 
 const engine = new AudioEngine();
 const recorder = new MicRecorder(engine);
@@ -82,6 +82,7 @@ onSettingsChange((field) => {
   if (field === 'intervals') modes.identify.renderAnswers();
   if (field === 'hideSpectrum') modes.identify.renderSpectrum();
   if (field === 'harmSolo') modes.identify.onSoloChange();
+  if (field === 'hidePitch') modes.single.draw();
   if (field === 'direction') modes.identify.renderSpectrum(); // shows or hides "Each note alone"
   modes.sing.onSettings(field);
 });

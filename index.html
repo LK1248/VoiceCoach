@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Voice Coach</title>
-  <link rel="stylesheet" href="css/style.css?v=20261005223728">
+  <link rel="stylesheet" href="css/style.css?v=20261009132303">
 </head>
 <body data-mode="identify">
   <header class="topbar">
@@ -108,6 +108,7 @@
         <h3>Singing</h3>
         <label class="check" data-only="sing"><input type="checkbox" id="showInterval"> Show interval name while playing</label>
         <label class="check"><input type="checkbox" id="octaveTolerant"> Accept any octave</label>
+        <label class="check" data-only="single" title="Sing by ear: the pitch graph stays blank while you sing and appears when the attempt ends"><input type="checkbox" id="hidePitch"> Hide pitch graph while singing</label>
         <label class="slider">Tolerance <output id="toleranceVal"></output>
           <input type="range" id="tolerance" min="10" max="100" step="5">
         </label>
@@ -283,6 +284,6 @@
     <a href="https://github.com/gleitz/midi-js-soundfonts" target="_blank" rel="noopener">midi-js-soundfonts</a>.
   </footer>
 
-  <script type="module" src="js/main.js?v=20261005223728"></script>
+  <script type="module" src="js/main.js?v=20261009132303"></script>
 </body>
 </html>

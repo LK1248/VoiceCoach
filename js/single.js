@@ -4,14 +4,14 @@
 //    graph in pale gray; the newest is drawn in the text colour, thicker.
 //  • Pitch following: the user must hold the note within tolerance for
 //    `holdTime` seconds; then the next note plays. Successes are counted per run.
-import { midiToName } from './music.js?v=20261005223728';
-import { settings, vowelsFor, instrumentFor, soundText } from './settings.js?v=20261005223728';
-import { pickInstrument } from './instruments.js?v=20261005223728';
-import { getAllowedNotes } from './noteRange.js?v=20261005223728';
-import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, noteCardHtml } from './grading.js?v=20261005223728';
-import { activeNoiseProfile, bindRoomNoiseControls } from './roomNoise.js?v=20261005223728';
-import { logSpectrum, findPeaks, cleanSpectrum, subtractNoise, drawSpectrum } from './spectrum.js?v=20261005223728';
-import { createPlot, drawBand, drawTrace, drawPlayhead, drawMessage } from './plot.js?v=20261005223728';
+import { midiToName } from './music.js?v=20261009132303';
+import { settings, vowelsFor, instrumentFor, soundText } from './settings.js?v=20261009132303';
+import { pickInstrument } from './instruments.js?v=20261009132303';
+import { getAllowedNotes } from './noteRange.js?v=20261009132303';
+import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, noteCardHtml } from './grading.js?v=20261009132303';
+import { activeNoiseProfile, bindRoomNoiseControls } from './roomNoise.js?v=20261009132303';
+import { logSpectrum, findPeaks, cleanSpectrum, subtractNoise, drawSpectrum } from './spectrum.js?v=20261009132303';
+import { createPlot, drawBand, drawTrace, drawPlayhead, drawMessage } from './plot.js?v=20261009132303';
 
 const $ = (id) => document.getElementById(id);
 const VOICE_FRAMES = 3; // consecutive steady voiced frames (~70 ms) that start an attempt
@@ -502,6 +502,12 @@ export class SingleMode {
     if (!this.target) { drawMessage(c, 'Press New note to start'); return; }
     const name = midiToName(this.target);
     const tol = settings.tolerance;
+
+    // Sing by ear: the trace appears once the attempt (or the following run) has ended.
+    if (settings.hidePitch && (this.live || (this.following && this.active))) {
+      drawMessage(c, 'Pitch graph hidden while you sing');
+      return;
+    }
 
     if (this.following) {
       const now = this.follow.length ? this.follow[this.follow.length - 1].t : 0;

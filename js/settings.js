@@ -1,6 +1,6 @@
 // Shared exercise settings, persisted in localStorage, bound to the sidebar UI.
-import { INTERVALS, midiToName } from './music.js?v=20261005223728';
-import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, instrumentRange } from './instruments.js?v=20261005223728';
+import { INTERVALS, midiToName } from './music.js?v=20261009132303';
+import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, instrumentRange } from './instruments.js?v=20261009132303';
 
 const KEY = 'voiceCoach.settings.v1';
 
@@ -21,6 +21,7 @@ const DEFAULTS = {
   singleRange: null, // Single Note [lo, hi]; null = instrument default
   singleAllowed: null, // Single Note: allowed MIDI notes within the range; null = all
   holdTime: 2, // Single Note, pitch following: seconds to hold the note
+  hidePitch: false, // Single Note: hide the pitch graph while singing (shown afterwards)
   autoNext: false,
   hideSpectrum: true, // Interval ID: hide the spectrum until answered (peak gaps reveal the interval)
   harmSolo: false, // Interval ID, notes played together: also show each note's spectrum alone
@@ -222,6 +223,7 @@ export function initSettingsUI() {
   bindCheck('octaveTolerant');
   bindCheck('autoNext');
   bindCheck('randomDur');
+  bindCheck('hidePitch');
   bindCheck('hideSpectrum');
   bindCheck('harmSolo');
   bindCheck('keepAlive');
