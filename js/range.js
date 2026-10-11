@@ -3,11 +3,12 @@
 // and the range within the chosen register, marks register switches (pitch
 // cracks and sudden H1–H2 changes, i.e. chest ↔ head/falsetto flips) with how
 // abrupt they were, and relates the session's ranges to conventional voice types.
-import { midiToName, median } from './music.js?v=20261009205629';
-import { settings, settingChanged } from './settings.js?v=20261009205629';
-import { activeNoiseProfile, bindRoomNoiseControls } from './roomNoise.js?v=20261009205629';
-import { logSpectrum, findPeaks, cleanSpectrum, subtractNoise, drawSpectrum } from './spectrum.js?v=20261009205629';
-import { createPlot, drawTrace, drawMessage, drawPlayhead } from './plot.js?v=20261009205629';
+import { midiToName, median } from './music.js?v=20261011222806';
+import { levelPercent } from './recorder.js?v=20261011222806';
+import { settings, settingChanged } from './settings.js?v=20261011222806';
+import { activeNoiseProfile, bindRoomNoiseControls } from './roomNoise.js?v=20261011222806';
+import { logSpectrum, findPeaks, cleanSpectrum, subtractNoise, drawSpectrum } from './spectrum.js?v=20261011222806';
+import { createPlot, drawTrace, drawMessage, drawPlayhead } from './plot.js?v=20261011222806';
 
 const $ = (id) => document.getElementById(id);
 
@@ -20,7 +21,7 @@ const MIN_VOICED = 2.5; // ...once at least this much has been sung
 const MAX_SEC = 60;
 // Voicing for sirens (gentler than the other themes: siren extremes are often quiet or breathy)
 const MIN_CLARITY = 0.6;
-const MIN_RMS = 0.003; // about -50 dBFS
+const MIN_RMS = 0.005; // about -46 dBFS (the level the siren analysis was tuned with)
 const MIN_MIDI = 36; // C2 (65 Hz): below a bass's range, above mains hum (50/60 Hz)
 // A sung note always contains its fundamental. When the detector locks onto a wrong pitch
 // (e.g. 1.5x or 2x the real one) that "fundamental" is missing while its double is a real
@@ -460,7 +461,7 @@ export class RangeMode {
   }
 
   onFrame(f) {
-    $('rgLevel').style.width = `${Math.min(100, f.rms * 500)}%`;
+    $('rgLevel').style.width = `${levelPercent(f.rms)}%`;
     if (!this.running || f.t == null) return;
     this.frames.push(f);
     // spectrum snapshots ride on the mic frames (keeps working in a background tab)

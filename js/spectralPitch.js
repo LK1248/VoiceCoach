@@ -5,7 +5,7 @@
 // harmonics best explain it (harmonic sum).
 // Best effort: a sung note's harmonics that coincide with the chord's are masked unless the
 // voice is clearly louder than the speakers at the microphone.
-import { freqToMidi } from './music.js?v=20261009205629';
+import { freqToMidi } from './music.js?v=20261011222806';
 
 const MARGIN_DB = 6; // the voice must exceed the backing profile by this much to count
 const FLOOR_DB = -95; // ...and this absolute level (analyser dBFS)

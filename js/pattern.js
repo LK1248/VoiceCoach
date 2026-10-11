@@ -1,11 +1,12 @@
 // Patterns: hear a melodic pattern (scale, arpeggio, warm-up or random melody) and sing it
 // back — or sing along with it — one fixed-length window per note; each note is graded.
-import { midiToName } from './music.js?v=20261009205629';
-import { pickInstrument } from './instruments.js?v=20261009205629';
-import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, fmtCents } from './grading.js?v=20261009205629';
-import { settings, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261009205629';
-import { createPlot, drawBand, drawTrace, drawPlayhead, drawMessage } from './plot.js?v=20261009205629';
-import { buildPattern } from './patterns.js?v=20261009205629';
+import { midiToName } from './music.js?v=20261011222806';
+import { levelPercent } from './recorder.js?v=20261011222806';
+import { pickInstrument } from './instruments.js?v=20261011222806';
+import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, fmtCents } from './grading.js?v=20261011222806';
+import { settings, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261011222806';
+import { createPlot, drawBand, drawTrace, drawPlayhead, drawMessage } from './plot.js?v=20261011222806';
+import { buildPattern } from './patterns.js?v=20261011222806';
 
 const $ = (id) => document.getElementById(id);
 const COUNT_IN_BEAT = 0.6; // seconds
@@ -106,7 +107,7 @@ export class PatternMode {
   }
 
   onFrame(f) {
-    $('ptLevel').style.width = `${Math.min(100, f.rms * 500)}%`;
+    $('ptLevel').style.width = `${levelPercent(f.rms)}%`;
     if (this.recording && f.t != null) this.frames.push(f);
     this.voiceWatcher?.(f);
     this.frameWatcher?.();

@@ -1,7 +1,7 @@
 // Shared exercise settings, persisted in localStorage, bound to the sidebar UI.
-import { INTERVALS, DEGREES, midiToName } from './music.js?v=20261009205629';
-import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, BACKING, instrumentRange } from './instruments.js?v=20261009205629';
-import { SCALES, ARPEGGIOS, WARMUPS, FAMILIES } from './patterns.js?v=20261009205629';
+import { INTERVALS, DEGREES, midiToName } from './music.js?v=20261011222806';
+import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, BACKING, instrumentRange } from './instruments.js?v=20261011222806';
+import { SCALES, ARPEGGIOS, WARMUPS, FAMILIES } from './patterns.js?v=20261011222806';
 
 const KEY = 'voiceCoach.settings.v1';
 
@@ -28,6 +28,7 @@ const DEFAULTS = {
   harmSolo: false, // Interval ID, notes played together: also show each note's spectrum alone
   rangeRegister: 'chest', // Vocal Range: register of the siren
   sirenStyle: 'vowel', // Vocal Range: 'vowel' | 'nasal' | 'trill'
+  micId: null, // chosen microphone (deviceId); null = the browser's default
   keepAlive: true, // play inaudible noise so Bluetooth audio doesn't power down between notes // Interval ID: go to the next interval after a correct answer
   // Patterns
   patFamily: 'scale', // 'scale' | 'arpeggio' | 'warmup' | 'random'

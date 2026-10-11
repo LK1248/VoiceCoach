@@ -1,12 +1,24 @@
 // Microphone capture: raw PCM via an AudioWorklet (sample-accurate timing for
 // grading and playback alignment) plus live pitch frames.
-import { detectPitch } from './pitch.js?v=20261009205629';
-import { makeSpectrumAnalyser } from './audio.js?v=20261009205629';
-import { freqToMidi } from './music.js?v=20261009205629';
+import { detectPitch } from './pitch.js?v=20261011222806';
+import { makeSpectrumAnalyser } from './audio.js?v=20261011222806';
+import { freqToMidi } from './music.js?v=20261011222806';
 
 const CHUNK = 1024;
 const WINDOW = 2048;
 const HISTORY_SEC = 1.5; // how far back a recording can be back-dated
+// Voicing gate. A fixed level threshold fails with quiet microphones, so the level is judged
+// against the room: the noise floor is tracked as a running minimum of the frame level that
+// creeps up slowly (doubling takes ~30 s, so it survives long notes and drops at once in any
+// pause), and a frame is voiced when it is clearly periodic and stands above that floor.
+const MIN_CLARITY = 0.8;
+const MIN_RMS = 0.001; // about -60 dBFS: absolute minimum
+const FLOOR_RATIO = 2.5; // ...and this many times (8 dB) above the noise floor
+const FLOOR_RISE = 1.0005; // per frame (~21 ms)
+const MIC_CONSTRAINTS = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+
+/** Mic level as a 0–100 meter position: −60 dBFS … −10 dBFS, so quiet microphones still show. */
+export const levelPercent = (rms) => Math.max(0, Math.min(100, (20 * Math.log10(rms + 1e-9) + 60) * 2));
 const HANN = Float32Array.from({ length: WINDOW }, (_, i) => 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (WINDOW - 1)));
 
 /** Power of one frequency in a Hann-windowed buffer (Goertzel). */
@@ -52,6 +64,41 @@ export class MicRecorder {
     this.recentFrames = []; // recent pitch frames, same purpose
     this.chunks = [];
     this.onFrame = null; // ({ abs, t, midi, voiced, rms }) => void
+    this.floor = Infinity; // tracked noise-floor level (rms)
+    this.deviceId = null; // chosen microphone; null = the browser's default
+    this.onDevice = null; // () => void, after a microphone has been opened
+  }
+
+  /** Open a microphone: the chosen one, or the default if it is gone. */
+  async openStream() {
+    const want = this.deviceId ? { ...MIC_CONSTRAINTS, deviceId: { exact: this.deviceId } } : MIC_CONSTRAINTS;
+    try {
+      return await navigator.mediaDevices.getUserMedia({ audio: want });
+    } catch (err) {
+      if (!this.deviceId || !['OverconstrainedError', 'NotFoundError'].includes(err.name)) throw err;
+      this.deviceId = null; // unplugged since it was chosen
+      return navigator.mediaDevices.getUserMedia({ audio: MIC_CONSTRAINTS });
+    }
+  }
+
+  /** Label and id of the microphone in use (null before the first use). */
+  get device() {
+    const track = this.stream?.getAudioTracks()[0];
+    return track ? { label: track.label, id: track.getSettings?.().deviceId ?? null } : null;
+  }
+
+  /** Choose the microphone (null = default). Switches at once if one is already open. */
+  async setDevice(id) {
+    this.deviceId = id || null;
+    if (!this.ready) return;
+    const stream = await this.openStream();
+    this.micSource.disconnect();
+    this.stream.getTracks().forEach((t) => t.stop());
+    this.stream = stream;
+    this.micSource = this.engine.ctx.createMediaStreamSource(stream);
+    this.micSource.connect(this.source);
+    this.floor = Infinity; // a different microphone has a different noise floor
+    this.onDevice?.();
   }
 
   async init() {
@@ -62,16 +109,16 @@ export class MicRecorder {
     const ctx = this.engine.ensure();
     // iOS Safari: route as a play-and-record session (better with headsets).
     if (navigator.audioSession) navigator.audioSession.type = 'play-and-record';
-    this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-    });
+    this.stream = await this.openStream();
     const url = URL.createObjectURL(new Blob([WORKLET_SRC], { type: 'application/javascript' }));
     await ctx.audioWorklet.addModule(url);
     URL.revokeObjectURL(url);
 
     this.sr = ctx.sampleRate;
-    const src = ctx.createMediaStreamSource(this.stream);
-    this.source = src; // for themes that attach their own analyser
+    // Everything listens to `source`, a pass-through node, so the microphone behind it can change.
+    this.micSource = ctx.createMediaStreamSource(this.stream);
+    const src = (this.source = ctx.createGain());
+    this.micSource.connect(src);
     this.node = new AudioWorkletNode(ctx, 'rec-proc');
     const mute = ctx.createGain();
     mute.gain.value = 0; // keep the node pulled by the graph without monitoring the mic
@@ -91,6 +138,7 @@ export class MicRecorder {
     feed.connect(this.analyser);
     this.node.port.onmessage = (e) => this._chunk(e.data);
     this.ready = true;
+    this.onDevice?.();
   }
 
   _chunk(c) {
@@ -104,7 +152,8 @@ export class MicRecorder {
     if (this.recording) this.chunks.push(c);
 
     const p = detectPitch(this.window, this.sr);
-    const voiced = p.freq > 0 && p.clarity > 0.8 && p.rms > 0.01;
+    this.floor = Math.min(p.rms, Math.max(this.floor * FLOOR_RISE, 1e-5));
+    const voiced = p.freq > 0 && p.clarity > MIN_CLARITY && p.rms > Math.max(MIN_RMS, FLOOR_RATIO * this.floor);
     const center = this.abs - WINDOW / 2; // centre of the analysis window
     const frame = {
       abs: center,

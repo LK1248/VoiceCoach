@@ -1,6 +1,6 @@
 // Audio playback: sampled instruments (loaded on demand) with a synth fallback.
-import { INSTRUMENTS } from './instruments.js?v=20261009205629';
-import { midiToName, midiToFreq } from './music.js?v=20261009205629';
+import { INSTRUMENTS } from './instruments.js?v=20261011222806';
+import { midiToName, midiToFreq } from './music.js?v=20261011222806';
 
 const SF_BASE = 'https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM';
 const VOICE_BASE = 'samples/voices/';

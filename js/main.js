@@ -1,14 +1,14 @@
-import { AudioEngine } from './audio.js?v=20261009205629';
-import { MicRecorder } from './recorder.js?v=20261009205629';
-import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261009205629';
-import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange } from './settings.js?v=20261009205629';
-import { IdentifyMode } from './identify.js?v=20261009205629';
-import { SingMode } from './sing.js?v=20261009205629';
-import { RangeMode } from './range.js?v=20261009205629';
-import { PatternMode } from './pattern.js?v=20261009205629';
-import { ChordMode } from './chord.js?v=20261009205629';
-import { SingleMode } from './single.js?v=20261009205629';
-import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261009205629';
+import { AudioEngine } from './audio.js?v=20261011222806';
+import { MicRecorder } from './recorder.js?v=20261011222806';
+import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261011222806';
+import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange, settingChanged } from './settings.js?v=20261011222806';
+import { IdentifyMode } from './identify.js?v=20261011222806';
+import { SingMode } from './sing.js?v=20261011222806';
+import { RangeMode } from './range.js?v=20261011222806';
+import { PatternMode } from './pattern.js?v=20261011222806';
+import { ChordMode } from './chord.js?v=20261011222806';
+import { SingleMode } from './single.js?v=20261011222806';
+import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261011222806';
 
 const engine = new AudioEngine();
 const recorder = new MicRecorder(engine);
@@ -92,6 +92,39 @@ onSettingsChange((field) => {
   modes.pattern.onSettings(field);
   modes.chord.onSettings(field);
 });
+
+// Microphone picker. Browsers only reveal device names after microphone permission, so the
+// list fills in once the mic has been used (or when the picker itself is used).
+{
+  const sel = document.getElementById('micSelect');
+  const stat = document.getElementById('micStatus');
+  recorder.deviceId = settings.micId;
+  const refresh = async () => {
+    const devices = (await navigator.mediaDevices?.enumerateDevices?.() ?? []).filter((d) => d.kind === 'audioinput' && d.deviceId !== 'communications');
+    const named = devices.filter((d) => d.label && d.deviceId !== 'default');
+    sel.replaceChildren(new Option('Default (chosen by the browser)', ''), ...named.map((d) => new Option(d.label, d.deviceId)));
+    if (settings.micId && !named.some((d) => d.deviceId === settings.micId)) sel.add(new Option('(chosen microphone not connected)', settings.micId));
+    sel.value = settings.micId ?? '';
+    const inUse = recorder.device;
+    stat.classList.remove('warn');
+    stat.textContent = inUse ? `In use: ${inUse.label || 'microphone'}`
+      : named.length ? 'Not in use yet.' : 'Microphones are listed once the app has used the mic.';
+  };
+  recorder.onDevice = refresh;
+  navigator.mediaDevices?.addEventListener?.('devicechange', refresh);
+  sel.onchange = async () => {
+    settings.micId = sel.value || null;
+    settingChanged('micId');
+    try {
+      await recorder.setDevice(settings.micId);
+      if (!recorder.ready) await recorder.init(); // open it now, so the choice is confirmed (and names appear)
+    } catch (err) {
+      stat.textContent = err.name === 'NotAllowedError' ? 'Microphone permission was denied.' : `Could not open that microphone: ${err.message}`;
+      stat.classList.add('warn');
+    }
+  };
+  refresh();
+}
 
 // Phones: the settings panel is a bottom sheet opened from the top bar.
 {

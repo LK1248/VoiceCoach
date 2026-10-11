@@ -3,12 +3,13 @@
 
 const MIN_FREQ = 60;
 const MAX_FREQ = 1200;
+const MIN_RMS = 0.0005; // about -66 dBFS: below this there is nothing to analyse (callers gate further)
 
 export function detectPitch(input, sampleRate) {
   let rms = 0;
   for (let i = 0; i < input.length; i++) rms += input[i] * input[i];
   rms = Math.sqrt(rms / input.length);
-  if (rms < 0.005) return { freq: 0, clarity: 0, rms };
+  if (rms < MIN_RMS) return { freq: 0, clarity: 0, rms };
 
   // Downsample by 2 (average pairs) — plenty of resolution for the voice range.
   const n = input.length >> 1;

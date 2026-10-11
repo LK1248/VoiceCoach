@@ -64,6 +64,17 @@ Do not loosen these without re-checking against `recordings/`:
 - The user's voice: flips **into head around G3–A3** going up, **back down around A♯3–B3**;
   chest siren top ≈ G4–B4; usable range roughly A♯2–C♯5. Mic picks up some low-frequency noise.
 
+## Voicing gate and microphone (`recorder.js`)
+
+- `voiced` = clarity > 0.8 and level above max(0.001, 2.5 × tracked noise floor). The floor is a
+  running minimum of frame rms that creeps up (doubles in ~30 s). A fixed 0.01 threshold failed
+  with the user's quiet external mic. A steady sound present from the first frame becomes the
+  floor (so constant test tones read as unvoiced until there is a quieter frame).
+- Vocal Range has its own rule (`sirenPitch`, MIN_RMS 0.005 = what it was tuned with) and is
+  deliberately unchanged; it may still need louder singing on a quiet mic.
+- Mic picker: `recorder.setDevice(id)` swaps the stream behind `recorder.source` (a pass-through
+  gain node that everything listens to); `settings.micId` persists the choice.
+
 ## With Chords — speaker mode (`spectralPitch.js`), tested only by simulation so far
 
 - Headphones: the normal MPM frames are used. Speakers: the mic also hears the chord, so the
