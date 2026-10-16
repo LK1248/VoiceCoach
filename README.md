@@ -6,7 +6,7 @@ A browser-based singing coach. No build step — plain HTML/CSS/ES modules.
 
 ## Modes
 
-- **Interval ID** — hear two notes (ascending, descending or together), identify the interval (unison … minor 9th). After answering: the notes' spectrum and brightness vs. pitch; for notes played together, which harmonics they share, which beat, and a roughness curve for that sound.
+- **Interval ID** — hear two notes (ascending, descending or together), identify the interval (unison … minor 9th). After answering: the notes' spectrum and brightness vs. pitch; for notes played together, which harmonics they share, which beat, and a roughness curve for that sound. Song references: the opening of a familiar tune for each interval (played by the app from the current interval's first note), after answering and in a reference panel.
 - **Single Note** — *pitch alignment*: hear a note, sing it as many times as you like; each attempt is scored and graphed over the earlier ones. *Pitch following*: hold each note within tolerance for a set time to advance to the next; successes are counted per run. Notes come from a range (vertical slider) with per-note checkboxes.
 - **Interval Singing** — hear two notes, sing them back; live pitch tracking, per-note cents accuracy and steadiness, and reference-vs-take comparison playback.
 - **Patterns** — hear a scale, arpeggio, vocal warm-up or random melody, then sing it back (or sing along): every note is scored, plus how far you drifted from the starting key. The starting note can be fixed, random, or step by a semitone each round.

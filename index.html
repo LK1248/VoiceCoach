@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Voice Coach</title>
-  <link rel="stylesheet" href="css/style.css?v=20261011222806">
+  <link rel="stylesheet" href="css/style.css?v=20261016000458">
 </head>
 <body data-mode="identify">
   <header class="topbar">
@@ -294,6 +294,16 @@
             <div id="idBright" class="line bright-line"></div>
           </div>
         </div>
+        <div class="card songs-card">
+          <details id="idSongBox" open>
+            <summary><h3>Song references</h3></summary>
+            <div class="hint">The opening of a familiar tune for each interval, starting on the current interval's first note,
+              followed by the interval's two notes on their own. <b>Find</b> searches YouTube; <b>Add video</b> takes a YouTube link
+              (with a start time if you like) to play here in a docked player.</div>
+            <div id="idSongs" class="song-grid"></div>
+            <div id="idSongNow" class="hint song-now"></div>
+          </details>
+        </div>
         <div class="card stats">
           <div class="stats-head"><h3>Session</h3><button id="idResetStats" class="link">Reset</button></div>
           <div id="idStats"></div>
@@ -475,6 +485,12 @@
     </main>
   </div>
 
+  <!-- Docked YouTube player (Interval ID song references) -->
+  <div id="ytDock" class="yt-dock" hidden>
+    <div class="yt-head"><span id="ytTitle"></span><button id="ytClose" class="link" aria-label="Close the video">✕</button></div>
+    <div id="ytFrame" class="yt-frame"></div>
+  </div>
+
   <footer class="credits">
     Voice recordings: <a href="https://zenodo.org/records/1442513" target="_blank" rel="noopener">VocalSet</a>
     (Wilkins, Seetharaman, Wahl &amp; Pardo, 2018), licensed
@@ -483,6 +499,6 @@
     <a href="https://github.com/gleitz/midi-js-soundfonts" target="_blank" rel="noopener">midi-js-soundfonts</a>.
   </footer>
 
-  <script type="module" src="js/main.js?v=20261011222806"></script>
+  <script type="module" src="js/main.js?v=20261016000458"></script>
 </body>
 </html>

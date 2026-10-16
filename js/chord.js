@@ -6,14 +6,14 @@
 // chord. The backing is a fixed loop, so one cycle of it is first measured on its own, moment by
 // moment; the pitch is then read from what rises above the backing at the same point of the
 // cycle (spectralPitch.js) — best effort.
-import { midiToName, DEGREES } from './music.js?v=20261011222806';
-import { levelPercent } from './recorder.js?v=20261011222806';
-import { INSTRUMENTS, pickInstrument } from './instruments.js?v=20261011222806';
-import { makeSpectrumAnalyser } from './audio.js?v=20261011222806';
-import { settings, vowelsFor, instrumentFor } from './settings.js?v=20261011222806';
-import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, noteCardHtml } from './grading.js?v=20261011222806';
-import { createPlot, drawBand, drawTrace, drawPlayhead, drawMessage } from './plot.js?v=20261011222806';
-import { emptyProfile, holdMax, detectOverBacking } from './spectralPitch.js?v=20261011222806';
+import { midiToName, DEGREES } from './music.js?v=20261016000458';
+import { levelPercent } from './recorder.js?v=20261016000458';
+import { INSTRUMENTS, pickInstrument } from './instruments.js?v=20261016000458';
+import { makeSpectrumAnalyser } from './audio.js?v=20261016000458';
+import { settings, vowelsFor, instrumentFor } from './settings.js?v=20261016000458';
+import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, noteCardHtml } from './grading.js?v=20261016000458';
+import { createPlot, drawBand, drawTrace, drawPlayhead, drawMessage } from './plot.js?v=20261016000458';
+import { emptyProfile, holdMax, detectOverBacking } from './spectralPitch.js?v=20261016000458';
 
 const $ = (id) => document.getElementById(id);
 const VOICE_FRAMES = 3; // consecutive steady voiced frames (~70 ms) that start an attempt

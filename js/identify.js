@@ -1,9 +1,10 @@
 // Interval identification: hear two notes, pick the interval.
-import { INTERVALS, intervalBySemis, midiToName, midiToFreq, pickItem } from './music.js?v=20261011222806';
+import { INTERVALS, intervalBySemis, midiToName, midiToFreq, pickItem } from './music.js?v=20261016000458';
 // (no room-noise controls in this tab: the spectrum is the app's own playback)
-import { makeSpectrumAnalyser } from './audio.js?v=20261011222806';
-import { LOG_FREQS, logSpectrum, findPeaks, cleanSpectrum, spectralCentroid, perceptualCentroid, chordPartials, roughness, drawSpectrum } from './spectrum.js?v=20261011222806';
-import { settings, getRange, vowelsFor, soundText, instrumentFor, noteDursFor } from './settings.js?v=20261011222806';
+import { makeSpectrumAnalyser } from './audio.js?v=20261016000458';
+import { LOG_FREQS, logSpectrum, findPeaks, cleanSpectrum, spectralCentroid, perceptualCentroid, chordPartials, roughness, drawSpectrum } from './spectrum.js?v=20261016000458';
+import { songFor, youtubeSearch, songKey, parseYouTube } from './songs.js?v=20261016000458';
+import { settings, settingChanged, getRange, vowelsFor, soundText, instrumentFor, noteDursFor } from './settings.js?v=20261016000458';
 
 const $ = (id) => document.getElementById(id);
 const AUTO_NEXT_DELAY = 1200; // ms to show a correct answer before moving on
@@ -35,7 +36,17 @@ export class IdentifyMode {
       if (b.dataset.act === 'next') this.next();
       if (b.dataset.act === 'correct') this.play();
       if (b.dataset.act === 'chosen') this.playSemis(+b.dataset.semis);
+      if (b.dataset.act === 'song') this.playSong(+b.dataset.semis, b.dataset.dir);
     };
+    $('idSongs').onclick = (e) => {
+      const b = e.target.closest('button[data-act]');
+      if (!b) return;
+      if (b.dataset.act === 'song') this.playSong(+b.dataset.semis, b.dataset.dir);
+      if (b.dataset.act === 'video') this.playVideo(+b.dataset.semis, b.dataset.dir);
+      if (b.dataset.act === 'setVideo') this.setVideo(+b.dataset.semis, b.dataset.dir);
+    };
+    $('ytClose').onclick = () => this.closeVideo();
+    this.renderSongs();
     // Spectrum of the played notes
     $('idRaw').onchange = () => this.renderSpectrum();
     // Shown only for notes played together
@@ -368,7 +379,89 @@ export class IdentifyMode {
       ${clashing.length ? `<span class="clash">The pitch goes ${pitchUp ? 'up' : 'down'} but the brightness goes ${pitchUp ? 'down' : 'up'}${clashing.length < measures.length ? ` (${clashing[0]} measure)` : ''}: a common reason an interval can sound ${pitchUp ? 'descending' : 'ascending'}.</span>` : ''}</div>`;
   }
 
+  // ---- Song references ---------------------------------------------------------
+
+  /**
+   * Play the opening of a familiar tune for an interval, starting on the current interval's
+   * first note (or mid-range). Longer phrases are followed by the interval's two notes alone.
+   */
+  async playSong(semis, dir) {
+    const song = songFor(semis, dir);
+    if (!song) return;
+    clearTimeout(this.autoNextTimer); // listening to a song: don't move on underneath it
+    this.engine.stopAll();
+    const [lo, hi] = getRange();
+    const start = this.item?.root ?? Math.round((lo + hi) / 2);
+    const shift = start - song.notes[song.pair[0]][0];
+    const midis = song.notes.map(([o]) => o + shift);
+    const beat = 60 / song.bpm;
+    const inst = this.item ? instrumentFor(this.item) : settings.instrument === 'random' ? 'piano' : settings.instrument;
+    const vowels = midis.map(() => 'A');
+    const [a, b] = song.pair;
+    const pairIsPhrase = song.notes.length === 2;
+    const where = song.where ?? (a === 0 ? 'the first two notes' : `notes ${a + 1} → ${b + 1}`);
+    $('idSongNow').textContent = `♫ ${song.name}: the ${intervalBySemis(semis).name.toLowerCase()} is ${where}${pairIsPhrase ? '' : ', played again on its own afterwards'}.`;
+    const r = await this.engine.playSequence(inst, midis, { dur: song.notes.map(([, d]) => d * beat * 0.95), gap: 0.05 * beat, vowels });
+    this.status.fallback(r.fallback);
+    if (!pairIsPhrase) {
+      // …then the two notes of the interval by themselves, a little slower.
+      const d = Math.max(0.5, 1.2 * beat);
+      await this.engine.playSequence(inst, [midis[a], midis[b]], { dur: d, gap: 0.08, vowels, when: r.end + 0.6 });
+    }
+  }
+
+  /** Ask for (or clear) the YouTube link used for a song. */
+  setVideo(semis, dir) {
+    const song = songFor(semis, dir);
+    const key = songKey(semis, dir);
+    const current = settings.songVideos[key] ?? '';
+    const url = window.prompt(`YouTube link for "${song.name}" (a time like ?t=1m05s sets where it starts). Leave empty to remove.`, current);
+    if (url == null) return;
+    if (!url.trim()) delete settings.songVideos[key];
+    else if (parseYouTube(url)) settings.songVideos[key] = url.trim();
+    else { window.alert('That doesn\'t look like a YouTube video link.'); return; }
+    settingChanged('songVideos');
+    this.renderSongs();
+  }
+
+  /** Play a song's YouTube video in the docked player. */
+  playVideo(semis, dir) {
+    const song = songFor(semis, dir);
+    const v = parseYouTube(settings.songVideos[songKey(semis, dir)] ?? '');
+    if (!v) return;
+    this.engine.stopAll();
+    clearTimeout(this.autoNextTimer);
+    const src = `https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&playsinline=1${v.start ? `&start=${v.start}` : ''}`;
+    $('ytTitle').textContent = `${dir === 'desc' ? '↓' : '↑'} ${intervalBySemis(semis).short} · ${song.name}`;
+    $('ytFrame').innerHTML = `<iframe src="${src}" title="${song.name}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+    $('ytDock').hidden = false;
+  }
+
+  closeVideo() {
+    $('ytFrame').innerHTML = ''; // removing the player stops it
+    $('ytDock').hidden = true;
+  }
+
+  /** Song buttons for each active interval, ascending and descending. */
+  renderSongs() {
+    const cell = (semis, dir) => {
+      const song = songFor(semis, dir);
+      if (!song) return '<span class="song-none">no song yet</span>';
+      const tip = [song.also ? `Also: ${song.also}` : '', song.unsure ? 'Not sure this one is a good example' : ''].filter(Boolean).join(' · ');
+      const hasVideo = !!parseYouTube(settings.songVideos[songKey(semis, dir)] ?? '');
+      const data = `data-semis="${semis}" data-dir="${dir}"`;
+      return `<span class="song-cell"><button class="small" data-act="song" ${data}${tip ? ` title="${tip}"` : ''}>${dir === 'asc' ? '↑' : '↓'} ${song.name}${song.unsure ? ' ?' : ''}</button>`
+        + (hasVideo ? `<button class="small video-btn" data-act="video" ${data} title="Play the video in the player">▶ Video</button>` : '')
+        + `<a class="song-yt" href="${youtubeSearch(song)}" target="_blank" rel="noopener" title="Search YouTube for ${song.name}">Find</a>`
+        + `<button class="link song-link" data-act="setVideo" ${data} title="${hasVideo ? 'Change or remove the video link' : 'Paste a YouTube link to play it here'}">${hasVideo ? 'Edit' : 'Add video'}</button></span>`;
+    };
+    $('idSongs').innerHTML = INTERVALS.filter((iv) => settings.intervals.includes(iv.semis))
+      .map((iv) => `<div class="song-row"><b title="${iv.name}">${iv.short}</b>${cell(iv.semis, 'asc')}${iv.semis ? cell(iv.semis, 'desc') : ''}</div>`)
+      .join('') || '<div class="empty">Select some intervals in the settings.</div>';
+  }
+
   renderAnswers() {
+    this.renderSongs?.();
     const box = $('idAnswers');
     box.innerHTML = '';
     for (const iv of INTERVALS.filter((i) => settings.intervals.includes(i.semis))) {
@@ -402,6 +495,12 @@ export class IdentifyMode {
     const lengths = !settings.randomDur ? '' : ` · ${item.dir === 'harm' ? `length ${durs[0].toFixed(1)} s` : `lengths ${durs[0].toFixed(1)} s → ${durs[1].toFixed(1)} s`}`;
     const desc = `${midiToName(item.root)} ${item.dir === 'harm' ? '+' : '→'} ${midiToName(item.second)} · ${item.interval.name}${item.interval.semis === 0 ? '' : `, ${{ asc: 'ascending', desc: 'descending', harm: 'harmonic (together)' }[item.dir]}`}${soundText(item)}${lengths}`;
     const chosen = intervalBySemis(semis);
+    const songDir = item.dir === 'desc' ? 'desc' : 'asc'; // notes played together: the ascending tune
+    const songBtn = (s, label) => {
+      const song = songFor(s, songDir);
+      return song ? `<button data-act="song" data-semis="${s}" data-dir="${songDir}" title="${song.name}">♫ ${label}: ${song.name}</button>` : '';
+    };
+    $('idSongNow').textContent = '';
     $('idFeedback').innerHTML = `
       <div class="verdict ${ok ? 'ok' : 'no'}">${ok ? '✓ Correct!' : `✗ Not quite — you chose ${chosen.name}`}</div>
       <div class="detail">${desc}</div>
@@ -409,7 +508,8 @@ export class IdentifyMode {
         <button class="primary" data-act="next">Next ▶ <kbd>Space</kbd></button>
         <button data-act="correct">▶ Hear ${item.interval.short} <kbd>S</kbd></button>
         ${ok ? '' : `<button data-act="chosen" data-semis="${semis}">▶ Hear your answer (${chosen.short}) <kbd>D</kbd></button>`}
-      </div>`;
+      </div>
+      <div class="controls song-btns">${songBtn(item.interval.semis, `Song for ${item.interval.short}`)}${ok ? '' : songBtn(semis, `Song for your answer (${chosen.short})`)}</div>`;
     const auto = ok && settings.autoNext;
     $('idPrompt').textContent = auto ? 'Nice ear! Next one coming…' : ok ? 'Nice ear!' : 'Compare the two, then move on.';
     if (auto) {

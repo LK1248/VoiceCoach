@@ -4,15 +4,15 @@
 //    graph in pale gray; the newest is drawn in the text colour, thicker.
 //  • Pitch following: the user must hold the note within tolerance for
 //    `holdTime` seconds; then the next note plays. Successes are counted per run.
-import { midiToName } from './music.js?v=20261011222806';
-import { levelPercent } from './recorder.js?v=20261011222806';
-import { settings, vowelsFor, instrumentFor, soundText } from './settings.js?v=20261011222806';
-import { pickInstrument } from './instruments.js?v=20261011222806';
-import { getAllowedNotes } from './noteRange.js?v=20261011222806';
-import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, noteCardHtml } from './grading.js?v=20261011222806';
-import { activeNoiseProfile, bindRoomNoiseControls } from './roomNoise.js?v=20261011222806';
-import { logSpectrum, findPeaks, cleanSpectrum, subtractNoise, drawSpectrum } from './spectrum.js?v=20261011222806';
-import { createPlot, drawBand, drawTrace, drawPlayhead, drawMessage } from './plot.js?v=20261011222806';
+import { midiToName } from './music.js?v=20261016000458';
+import { levelPercent } from './recorder.js?v=20261016000458';
+import { settings, vowelsFor, instrumentFor, soundText } from './settings.js?v=20261016000458';
+import { pickInstrument } from './instruments.js?v=20261016000458';
+import { getAllowedNotes } from './noteRange.js?v=20261016000458';
+import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, noteCardHtml } from './grading.js?v=20261016000458';
+import { activeNoiseProfile, bindRoomNoiseControls } from './roomNoise.js?v=20261016000458';
+import { logSpectrum, findPeaks, cleanSpectrum, subtractNoise, drawSpectrum } from './spectrum.js?v=20261016000458';
+import { createPlot, drawBand, drawTrace, drawPlayhead, drawMessage } from './plot.js?v=20261016000458';
 
 const $ = (id) => document.getElementById(id);
 const VOICE_FRAMES = 3; // consecutive steady voiced frames (~70 ms) that start an attempt
