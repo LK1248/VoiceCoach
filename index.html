@@ -4,6 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Voice Coach</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="theme-color" content="#1e1e25" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
   <link rel="stylesheet" href="css/style.css?v=20261121021911">
 </head>
 <body data-mode="identify">
@@ -502,5 +507,9 @@
   </footer>
 
   <script type="module" src="js/main.js?v=20261121021911"></script>
+  <script>
+    // installable app (Android 'Install app'); https only, so local dev is unaffected
+    if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  </script>
 </body>
 </html>
