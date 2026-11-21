@@ -4,15 +4,15 @@
 //    graph in pale gray; the newest is drawn in the text colour, thicker.
 //  • Pitch following: the user must hold the note within tolerance for
 //    `holdTime` seconds; then the next note plays. Successes are counted per run.
-import { midiToName } from './music.js?v=20261016000458';
-import { levelPercent } from './recorder.js?v=20261016000458';
-import { settings, vowelsFor, instrumentFor, soundText } from './settings.js?v=20261016000458';
-import { pickInstrument } from './instruments.js?v=20261016000458';
-import { getAllowedNotes } from './noteRange.js?v=20261016000458';
-import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, noteCardHtml } from './grading.js?v=20261016000458';
-import { activeNoiseProfile, bindRoomNoiseControls } from './roomNoise.js?v=20261016000458';
-import { logSpectrum, findPeaks, cleanSpectrum, subtractNoise, drawSpectrum } from './spectrum.js?v=20261016000458';
-import { createPlot, drawBand, drawTrace, drawPlayhead, drawMessage } from './plot.js?v=20261016000458';
+import { midiToName } from './music.js?v=20261121021911';
+import { levelPercent } from './recorder.js?v=20261121021911';
+import { settings, settingChanged, vowelsFor, instrumentFor, soundText } from './settings.js?v=20261121021911';
+import { pickInstrument } from './instruments.js?v=20261121021911';
+import { getAllowedNotes } from './noteRange.js?v=20261121021911';
+import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, noteCardHtml, audioVerdictHtml, audioVerdictHead, revealButton } from './grading.js?v=20261121021911';
+import { activeNoiseProfile, bindRoomNoiseControls } from './roomNoise.js?v=20261121021911';
+import { logSpectrum, findPeaks, cleanSpectrum, subtractNoise, drawSpectrum } from './spectrum.js?v=20261121021911';
+import { createPlot, drawBand, drawTrace, drawPlayhead, drawMessage } from './plot.js?v=20261121021911';
 
 const $ = (id) => document.getElementById(id);
 const VOICE_FRAMES = 3; // consecutive steady voiced frames (~70 ms) that start an attempt
@@ -60,6 +60,8 @@ export class SingleMode {
     $('snStop').onclick = () => this.stop();
     $('snResetRun').onclick = () => { this.matched = 0; this.renderCounter(); };
     $('snResetStats').onclick = () => { this.stats = freshStats(); this.bestRun = 0; this.renderStats(); };
+    $('snResults').onclick = (e) => { if (e.target.closest('[data-act="reveal"]')) this.reveal(); };
+    $('snHoldHide').onclick = () => { settings.holdHidden = !settings.holdHidden; settingChanged('holdHidden'); };
     new ResizeObserver(() => this.draw()).observe($('snCanvas'));
     new ResizeObserver(() => this.redrawSpectrum()).observe($('snSpectrum'));
     this.spectrumLoop();
@@ -77,6 +79,29 @@ export class SingleMode {
   }
 
   get following() { return settings.singleMode === 'follow'; }
+
+  /** Audio only, and this note hasn't been revealed. */
+  get hidden() { return settings.audioOnly && !this.revealed; }
+
+  /** The target's name, or "the note" while it is hidden. */
+  get shownName() { return this.hidden ? 'the note' : midiToName(this.target); }
+
+  /** Audio only with the hold bar hidden: a chime marks a match instead. */
+  get chimeOnMatch() { return settings.audioOnly && settings.holdHidden; }
+
+  reveal() {
+    this.revealed = true;
+    $('view-single').classList.add('revealed');
+    this.renderUI();
+    this.renderResults();
+    this.draw();
+  }
+
+  /** A new note: hidden again in audio-only mode. */
+  unreveal() {
+    this.revealed = false;
+    $('view-single').classList.remove('revealed');
+  }
 
   /** The current note's randomly drawn sound choices, in the shape settings helpers expect. */
   get soundItem() { return { randomVowels: [this.randomVowel, this.randomVowel], instrument: this.randomInstrument }; }
@@ -104,7 +129,8 @@ export class SingleMode {
       for (const a of this.attempts) a.result = this.gradeAttempt(a.frames, a.D);
       this.renderResults();
     }
-    if (field === 'instrument' || field === 'vowel') this.renderUI();
+    if (field === 'instrument' || field === 'vowel' || field === 'audioOnly' || field === 'holdHidden') this.renderUI();
+    if (field === 'audioOnly') this.renderResults();
     if (field === 'holdTime') {
       this.renderHold(0);
       this.renderUI(); // prompt mentions the hold time
@@ -128,6 +154,7 @@ export class SingleMode {
       }
       const choices = notes.length > 1 ? notes.filter((m) => m !== this.target) : notes;
       this.target = rand(choices);
+      this.unreveal();
       this.randomVowel = rand(VOWEL_KEYS);
       this.randomInstrument = pickInstrument([this.target]);
       this.spec.ghost = null;
@@ -160,7 +187,7 @@ export class SingleMode {
     this.abortAttempt();
     this.engine.stopAll();
     this.deafUntil = Infinity;
-    this.setPhase(`👂 Listen: ${midiToName(this.target)}`);
+    this.setPhase(`👂 Listen: ${this.shownName}`);
     const r = await this.engine.playSequence(instrumentFor(this.soundItem), [this.target], {
       dur: settings.singDur, vowels: vowelsFor(this.soundItem),
     });
@@ -181,7 +208,7 @@ export class SingleMode {
   }
 
   setListeningPhase() {
-    const name = midiToName(this.target);
+    const name = this.shownName;
     this.setPhase(this.following
       ? `🎤 Sing ${name} and hold it for ${settings.holdTime.toFixed(1)} s`
       : this.attempts.length
@@ -250,7 +277,7 @@ export class SingleMode {
       const past = this.recorder.start(this.run[0].abs - Math.round(VOICE_PREROLL * this.recorder.sr));
       this.live = { frames: past, D: settings.singDur };
       this.run = [];
-      this.setPhase(`🎤 Recording ${midiToName(this.target)}…`, true);
+      this.setPhase(`🎤 Recording ${this.shownName}…`, true);
     }
   }
 
@@ -310,7 +337,8 @@ export class SingleMode {
     this.bestRun = Math.max(this.bestRun, this.matched);
     this.renderCounter();
     this.renderStats();
-    this.setPhase(`✓ Matched ${midiToName(this.target)}!`);
+    this.setPhase(`✓ Matched ${this.shownName}!`);
+    if (this.chimeOnMatch) this.engine.chime();
     setTimeout(async () => {
       this.advancing = false;
       if (!this.active || !this.following) return;
@@ -318,6 +346,7 @@ export class SingleMode {
       if (!notes.length) { this.stop(); return; }
       const choices = notes.length > 1 ? notes.filter((m) => m !== this.target) : notes;
       this.target = rand(choices);
+      this.unreveal();
       this.randomVowel = rand(VOWEL_KEYS);
       this.randomInstrument = pickInstrument([this.target]);
       this.follow = [];
@@ -339,11 +368,14 @@ export class SingleMode {
     $('snPrompt').textContent = follow
       ? `Sing each note and hold it in tune for ${settings.holdTime.toFixed(1)} s to move on to the next.`
       : 'Hear a note, then sing it. Every attempt is scored; sing again to improve, or press N for a new note.';
-    $('snTarget').innerHTML = this.target ? `🎯 ${midiToName(this.target)}<small class="sound">${soundText(this.soundItem).replace(/vowels (\w) → \w/, 'vowel $1')}</small>` : '&nbsp;';
+    $('snTarget').innerHTML = this.target && this.hidden ? '🎯 🎧 Note ?' : this.target ? `🎯 ${midiToName(this.target)}<small class="sound">${soundText(this.soundItem).replace(/vowels (\w) → \w/, 'vowel $1')}</small>` : '&nbsp;';
     $('snNew').innerHTML = `${follow && this.target ? '⏭ Skip note' : '▶ New note'} <kbd>N</kbd>`;
     $('snHear').disabled = !this.target;
     $('snStop').disabled = !this.active;
     $('snFollowBox').hidden = !follow;
+    // Audio only: the hold bar can be swapped for a chime on each match.
+    $('snHoldHide').textContent = settings.holdHidden ? 'show bar' : 'hide (chime instead)';
+    $('snFollowBox').classList.toggle('hold-hidden', this.chimeOnMatch);
     $('snResults').hidden = follow;
     $('snSpectrumBox').hidden = follow;
     if (!follow) this.redrawSpectrum();
@@ -373,6 +405,13 @@ export class SingleMode {
     const history = this.attempts
       .map((a, i) => `<span class="chip-score ${a.result.ok ? 'ok' : 'no'}${i === n - 1 ? ' latest' : ''}">${a.result.score}</span>`)
       .join('');
+    if (this.hidden) {
+      $('snResults').innerHTML = `
+        <div class="audio-verdicts">${audioVerdictHead()}${audioVerdictHtml(last, `Attempt ${n}`, tol)}</div>
+        <div class="attempts"><span class="field-label">Scores on this note:</span> ${history}</div>
+        ${revealButton()}`;
+      return;
+    }
     $('snResults').innerHTML = `
       <div class="notes">${noteCardHtml(last, `Attempt ${n}`, tol)}</div>${octLine}
       <div class="attempts"><span class="field-label">Scores on this note:</span> ${history}</div>`;

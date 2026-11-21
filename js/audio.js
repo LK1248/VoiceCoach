@@ -1,6 +1,6 @@
 // Audio playback: sampled instruments (loaded on demand) with a synth fallback.
-import { INSTRUMENTS } from './instruments.js?v=20261016000458';
-import { midiToName, midiToFreq } from './music.js?v=20261016000458';
+import { INSTRUMENTS } from './instruments.js?v=20261121021911';
+import { midiToName, midiToFreq } from './music.js?v=20261121021911';
 
 const SF_BASE = 'https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM';
 const VOICE_BASE = 'samples/voices/';
@@ -269,6 +269,24 @@ export class AudioEngine {
     osc.start(when);
     osc.stop(when + 0.1);
     this._track(osc);
+  }
+
+  /** A soft two-tone chime (e.g. "note held long enough" when the hold bar is hidden). */
+  chime() {
+    const ctx = this.ensure();
+    const t = ctx.currentTime + 0.02;
+    for (const [f, dt] of [[1318.5, 0], [1975.5, 0.09]]) {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.frequency.value = f;
+      g.gain.setValueAtTime(0, t + dt);
+      g.gain.linearRampToValueAtTime(0.12, t + dt + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0005, t + dt + 0.6);
+      osc.connect(g).connect(this.master);
+      osc.start(t + dt);
+      osc.stop(t + dt + 0.65);
+      this._track(osc);
+    }
   }
 
   _track(src) {

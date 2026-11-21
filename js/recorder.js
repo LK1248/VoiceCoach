@@ -1,8 +1,8 @@
 // Microphone capture: raw PCM via an AudioWorklet (sample-accurate timing for
 // grading and playback alignment) plus live pitch frames.
-import { detectPitch } from './pitch.js?v=20261016000458';
-import { makeSpectrumAnalyser } from './audio.js?v=20261016000458';
-import { freqToMidi } from './music.js?v=20261016000458';
+import { detectPitch } from './pitch.js?v=20261121021911';
+import { makeSpectrumAnalyser } from './audio.js?v=20261121021911';
+import { freqToMidi } from './music.js?v=20261121021911';
 
 const CHUNK = 1024;
 const WINDOW = 2048;
@@ -15,6 +15,21 @@ const MIN_CLARITY = 0.8;
 const MIN_RMS = 0.001; // about -60 dBFS: absolute minimum
 const FLOOR_RATIO = 2.5; // ...and this many times (8 dB) above the noise floor
 const FLOOR_RISE = 1.0005; // per frame (~21 ms)
+// Rumble filter for pitch detection: 4th-order Butterworth high-pass at 60 Hz (two biquads).
+// Some microphones pick up strong sub-60 Hz rumble that, with quiet singing, swamps the voice's
+// periodicity. Recordings, the level meter and Vocal Range's raw values stay unfiltered.
+const RUMBLE_HZ = 60;
+const RUMBLE_Q = [0.5412, 1.3066];
+
+/** RBJ high-pass biquad coefficients, normalised. */
+function highpass(f0, q, sr) {
+  const w = (2 * Math.PI * f0) / sr;
+  const alpha = Math.sin(w) / (2 * q);
+  const cos = Math.cos(w);
+  const a0 = 1 + alpha;
+  return { b0: (1 + cos) / 2 / a0, b1: -(1 + cos) / a0, b2: (1 + cos) / 2 / a0, a1: (-2 * cos) / a0, a2: (1 - alpha) / a0 };
+}
+
 const MIC_CONSTRAINTS = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
 
 /** Mic level as a 0–100 meter position: −60 dBFS … −10 dBFS, so quiet microphones still show. */
@@ -58,6 +73,8 @@ export class MicRecorder {
     this.ready = false;
     this.recording = false;
     this.window = new Float32Array(WINDOW);
+    this.filtered = new Float32Array(WINDOW); // the same window through the rumble filter
+    this.hp = null; // filter stages (coefficients + state), set up once the sample rate is known
     this.abs = 0; // total samples received since init
     this.startAbs = 0; // absolute sample where the current recording starts
     this.history = []; // recent chunks { start, data }, so a recording can be back-dated
@@ -141,9 +158,26 @@ export class MicRecorder {
     this.onDevice?.();
   }
 
+  /** Run a chunk through the rumble filter (state carries over between chunks). */
+  _filter(c) {
+    this.hp ??= RUMBLE_Q.map((q) => ({ ...highpass(RUMBLE_HZ, q, this.sr), x1: 0, x2: 0, y1: 0, y2: 0 }));
+    const out = Float32Array.from(c);
+    for (const st of this.hp) {
+      for (let i = 0; i < out.length; i++) {
+        const x = out[i];
+        const y = st.b0 * x + st.b1 * st.x1 + st.b2 * st.x2 - st.a1 * st.y1 - st.a2 * st.y2;
+        st.x2 = st.x1; st.x1 = x; st.y2 = st.y1; st.y1 = y;
+        out[i] = y;
+      }
+    }
+    return out;
+  }
+
   _chunk(c) {
     this.window.copyWithin(0, c.length);
     this.window.set(c, WINDOW - c.length);
+    this.filtered.copyWithin(0, c.length);
+    this.filtered.set(this._filter(c), WINDOW - c.length);
     const chunkStart = this.abs;
     this.abs += c.length;
     const keepFrom = this.abs - HISTORY_SEC * this.sr;
@@ -151,14 +185,16 @@ export class MicRecorder {
     while (this.history[0].start + CHUNK < keepFrom) this.history.shift();
     if (this.recording) this.chunks.push(c);
 
-    const p = detectPitch(this.window, this.sr);
-    this.floor = Math.min(p.rms, Math.max(this.floor * FLOOR_RISE, 1e-5));
-    const voiced = p.freq > 0 && p.clarity > MIN_CLARITY && p.rms > Math.max(MIN_RMS, FLOOR_RATIO * this.floor);
+    const p = detectPitch(this.window, this.sr); // raw: Vocal Range's own voicing rule and H1–H2
+    const q = detectPitch(this.filtered, this.sr); // rumble removed: the shared voicing decision
+    // Digital silence (e.g. before the microphone delivers audio) must not set the noise floor.
+    if (q.rms > 1e-6) this.floor = Math.min(q.rms, Math.max(this.floor * FLOOR_RISE, 1e-5));
+    const voiced = q.freq > 0 && q.clarity > MIN_CLARITY && q.rms > Math.max(MIN_RMS, FLOOR_RATIO * this.floor);
     const center = this.abs - WINDOW / 2; // centre of the analysis window
     const frame = {
       abs: center,
       t: this.recording ? (center - this.startAbs) / this.sr : null,
-      midi: voiced ? freqToMidi(p.freq) : null,
+      midi: voiced ? freqToMidi(q.freq) : null,
       voiced,
       rms: p.rms,
       // Raw detector output, for themes that apply their own voicing rule (Vocal Range).

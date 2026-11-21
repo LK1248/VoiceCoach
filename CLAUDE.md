@@ -70,10 +70,22 @@ Do not loosen these without re-checking against `recordings/`:
   running minimum of frame rms that creeps up (doubles in ~30 s). A fixed 0.01 threshold failed
   with the user's quiet external mic. A steady sound present from the first frame becomes the
   floor (so constant test tones read as unvoiced until there is a quieter frame).
+- The user's external mic has strong sub-60 Hz rumble (90–99% of the energy when silent, rms
+  0.013–0.05, as loud as quiet singing). The shared voicing/pitch (`voiced`, `midi`) is computed on
+  a 60 Hz 4th-order high-passed copy of the window; `rawMidi`/`clarity`/`rms`/`h12` stay unfiltered.
+  Digital silence (rms < 1e-6) doesn't update the noise floor.
 - Vocal Range has its own rule (`sirenPitch`, MIN_RMS 0.005 = what it was tuned with) and is
   deliberately unchanged; it may still need louder singing on a quiet mic.
 - Mic picker: `recorder.setDevice(id)` swaps the stream behind `recorder.source` (a pass-through
   gain node that everything listens to); `settings.micId` persists the choice.
+
+## Free timing (`align.js`): Interval Singing and Patterns
+
+- Takes start when singing is heard (default; count-in still available) and end after 1 s of silence
+  (or 2× the nominal length + 3 s). Voiced frames are split into steady-pitch stretches (break on a
+  0.1 s gap or a 0.7-semitone jump) and matched to the targets in order by DP (skip a stretch:
+  2.5/s, miss a target: 1.0, error capped at 3 semitones). Each note is graded from its own span
+  minus the first 20%. Repeated same-pitch notes need a short break in voicing to count as two.
 
 ## With Chords — speaker mode (`spectralPitch.js`), tested only by simulation so far
 
@@ -100,3 +112,7 @@ Do not loosen these without re-checking against `recordings/`:
 - Keyboard shortcuts: N new, A replay/hear, Space next, R try again (singing), interval keys
   1–8 (unison, major/perfect) and W E T Y U I (minor/tritone, I = m9), S / D hear correct / your answer.
 - UI text: shortcut letters shown capitalised.
+- Audio-only mode (Single Note, Interval Singing, Patterns; toggle top right of the card, V): no note
+  names, no pitch graph or spectrum, per-interval/pattern stats hidden; feedback = on pitch / sharp /
+  flat + "a little" (≤50¢) / "clearly" (≤100¢) / "more than a semitone" and a ±100¢ gauge, no cents
+  until "Reveal". Pitch following keeps its hold bar; "hide" swaps it for a chime on each match.

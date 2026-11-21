@@ -1,14 +1,14 @@
-import { AudioEngine } from './audio.js?v=20261016000458';
-import { MicRecorder } from './recorder.js?v=20261016000458';
-import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261016000458';
-import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange, settingChanged } from './settings.js?v=20261016000458';
-import { IdentifyMode } from './identify.js?v=20261016000458';
-import { SingMode } from './sing.js?v=20261016000458';
-import { RangeMode } from './range.js?v=20261016000458';
-import { PatternMode } from './pattern.js?v=20261016000458';
-import { ChordMode } from './chord.js?v=20261016000458';
-import { SingleMode } from './single.js?v=20261016000458';
-import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261016000458';
+import { AudioEngine } from './audio.js?v=20261121021911';
+import { MicRecorder } from './recorder.js?v=20261121021911';
+import { INSTRUMENTS, RANDOM, pickInstrument, VOWELS } from './instruments.js?v=20261121021911';
+import { settings, getRange, vowelsInUse, initSettingsUI, onSettingsChange, settingChanged } from './settings.js?v=20261121021911';
+import { IdentifyMode } from './identify.js?v=20261121021911';
+import { SingMode } from './sing.js?v=20261121021911';
+import { RangeMode } from './range.js?v=20261121021911';
+import { PatternMode } from './pattern.js?v=20261121021911';
+import { ChordMode } from './chord.js?v=20261121021911';
+import { SingleMode } from './single.js?v=20261121021911';
+import { initNoteRangeUI, getSingleRange } from './noteRange.js?v=20261121021911';
 
 const engine = new AudioEngine();
 const recorder = new MicRecorder(engine);
@@ -126,6 +126,27 @@ onSettingsChange((field) => {
   refresh();
 }
 
+// Audio-only mode (Single Note, Interval Singing, Patterns): one setting, a toggle on each tab.
+const AUDIO_ONLY_TABS = ['single', 'sing', 'pattern'];
+const OVERRIDDEN = ['showInterval', 'patShowNotes', 'patHideTrace', 'hidePitch']; // meaningless while it is on
+function syncAudioOnly() {
+  const on = settings.audioOnly;
+  document.body.classList.toggle('audio-only', on);
+  document.querySelectorAll('.audio-toggle').forEach((b) => b.setAttribute('aria-pressed', on));
+  for (const id of OVERRIDDEN) {
+    const label = document.getElementById(id).closest('label');
+    label.classList.toggle('overridden', on);
+    document.getElementById(id).disabled = on;
+  }
+}
+function toggleAudioOnly() {
+  settings.audioOnly = !settings.audioOnly;
+  syncAudioOnly();
+  settingChanged('audioOnly');
+}
+document.querySelectorAll('.audio-toggle').forEach((b) => { b.onclick = toggleAudioOnly; });
+syncAudioOnly();
+
 // Phones: the settings panel is a bottom sheet opened from the top bar.
 {
   const sheet = document.getElementById('settings');
@@ -169,5 +190,6 @@ document.querySelectorAll('.tab[data-mode]').forEach((tab) => {
 document.addEventListener('keydown', (e) => {
   if (e.target.matches?.('select, textarea, input[type="text"], input[type="number"]') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
   if (e.code === 'Space') e.preventDefault();
+  if (e.key.toLowerCase() === 'v' && AUDIO_ONLY_TABS.includes(mode)) { toggleAudioOnly(); return; }
   modes[mode].onKey(e);
 });

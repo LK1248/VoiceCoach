@@ -1,10 +1,10 @@
 // Interval identification: hear two notes, pick the interval.
-import { INTERVALS, intervalBySemis, midiToName, midiToFreq, pickItem } from './music.js?v=20261016000458';
+import { INTERVALS, intervalBySemis, midiToName, midiToFreq, pickItem } from './music.js?v=20261121021911';
 // (no room-noise controls in this tab: the spectrum is the app's own playback)
-import { makeSpectrumAnalyser } from './audio.js?v=20261016000458';
-import { LOG_FREQS, logSpectrum, findPeaks, cleanSpectrum, spectralCentroid, perceptualCentroid, chordPartials, roughness, drawSpectrum } from './spectrum.js?v=20261016000458';
-import { songFor, youtubeSearch, songKey, parseYouTube } from './songs.js?v=20261016000458';
-import { settings, settingChanged, getRange, vowelsFor, soundText, instrumentFor, noteDursFor } from './settings.js?v=20261016000458';
+import { makeSpectrumAnalyser } from './audio.js?v=20261121021911';
+import { LOG_FREQS, logSpectrum, findPeaks, cleanSpectrum, spectralCentroid, perceptualCentroid, chordPartials, roughness, drawSpectrum } from './spectrum.js?v=20261121021911';
+import { songFor, youtubeSearch, songKey, parseYouTube } from './songs.js?v=20261121021911';
+import { settings, settingChanged, getRange, vowelsFor, soundText, instrumentFor, noteDursFor } from './settings.js?v=20261121021911';
 
 const $ = (id) => document.getElementById(id);
 const AUTO_NEXT_DELAY = 1200; // ms to show a correct answer before moving on

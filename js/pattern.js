@@ -1,12 +1,13 @@
 // Patterns: hear a melodic pattern (scale, arpeggio, warm-up or random melody) and sing it
 // back — or sing along with it — one fixed-length window per note; each note is graded.
-import { midiToName } from './music.js?v=20261016000458';
-import { levelPercent } from './recorder.js?v=20261016000458';
-import { pickInstrument } from './instruments.js?v=20261016000458';
-import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, fmtCents } from './grading.js?v=20261016000458';
-import { settings, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261016000458';
-import { createPlot, drawBand, drawTrace, drawPlayhead, drawMessage } from './plot.js?v=20261016000458';
-import { buildPattern } from './patterns.js?v=20261016000458';
+import { midiToName } from './music.js?v=20261121021911';
+import { levelPercent } from './recorder.js?v=20261121021911';
+import { pickInstrument } from './instruments.js?v=20261121021911';
+import { gradeTake, noteWindows, noteIndexAt, END_SILENCE, takeLimit } from './align.js?v=20261121021911';
+import { fmtCents, audioVerdictHtml, audioVerdictHead, offAmount, revealButton } from './grading.js?v=20261121021911';
+import { settings, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261121021911';
+import { createPlot, drawBand, drawTrace, drawPlayhead, drawMessage } from './plot.js?v=20261121021911';
+import { buildPattern } from './patterns.js?v=20261121021911';
 
 const $ = (id) => document.getElementById(id);
 const COUNT_IN_BEAT = 0.6; // seconds
@@ -25,14 +26,13 @@ export const patternRange = () => settings.patRange;
  * `drift` is how far the last note's error has moved from the first note's (cents).
  */
 export function gradePattern(frames, targets, D, tol, octaveTolerant) {
-  const segs = targets.map((tg, i) => segmentCents(frames, tg, (i + GRADE_FROM) * D, (i + GRADE_TO) * D));
-  const first = segs.find((s) => s.raw.length >= 3);
-  const shift = octaveTolerant && first ? octaveShift(first.raw) : 0;
-  const notes = targets.map((tg, i) => scoreNote(tg, segs[i], tol, shift));
+  // Free timing: the singer's own notes are matched to the targets in order (align.js).
+  const { notes, shift, spans } = gradeTake(frames, targets, tol, octaveTolerant);
   const heard = notes.filter((n) => n.detected);
   return {
     notes,
     shift,
+    spans,
     drift: heard.length >= 2 ? heard[heard.length - 1].cents - heard[0].cents : null,
     inTune: notes.filter((n) => n.ok).length,
     score: Math.round(notes.reduce((a, n) => a + n.score, 0) / notes.length),
@@ -63,6 +63,7 @@ export class PatternMode {
     $('ptCmpBoth').onclick = () => this.compare('both');
     $('ptCmpStop').onclick = () => this.stopPlayback();
     $('ptResetStats').onclick = () => { this.stats = freshStats(); this.renderStats(); };
+    $('ptResults').onclick = (e) => { if (e.target.closest('[data-act="reveal"]')) this.reveal(); };
     new ResizeObserver(() => this.draw()).observe($('ptCanvas'));
     this.syncControls();
     this.renderStats();
@@ -80,7 +81,25 @@ export class PatternMode {
 
   deactivate() { this.stopPlayback(); }
 
+  /** Audio only, and this take hasn't been revealed. */
+  get hidden() { return settings.audioOnly && !this.revealed; }
+
+  /** Note names may be shown while singing. */
+  get namesWhileSinging() { return settings.patShowNotes && !settings.audioOnly; }
+
+  reveal() {
+    this.revealed = true;
+    $('view-pattern').classList.add('revealed');
+    this.showLabel(true);
+    this.renderResult();
+    this.draw();
+  }
+
   onSettings(field) {
+    if (field === 'audioOnly') {
+      if (this.result) this.renderResult();
+      this.renderStats();
+    }
     if (field.startsWith('pat')) this.syncControls();
     if (['patFamily', 'patScale', 'patArp', 'patWarm', 'patQuality', 'patShape', 'patOctave', 'patStart', 'patRoot', 'patRange'].includes(field)) {
       this.step.root = null; // a different pattern or starting point: stepping starts over
@@ -108,7 +127,10 @@ export class PatternMode {
 
   onFrame(f) {
     $('ptLevel').style.width = `${levelPercent(f.rms)}%`;
-    if (this.recording && f.t != null) this.frames.push(f);
+    if (this.recording && f.t != null) {
+      this.frames.push(f);
+      if (f.voiced) { this.lastVoicedT = f.t; this.voicedSec += 1024 / this.recorder.sr; }
+    }
     this.voiceWatcher?.(f);
     this.frameWatcher?.();
   }
@@ -130,6 +152,11 @@ export class PatternMode {
     const { item } = this;
     const el = $('ptLabel');
     if (!item) { el.innerHTML = '&nbsp;'; return; }
+    if (this.hidden) {
+      // Audio only: the pattern type is your own choice; the key and the notes stay hidden.
+      el.innerHTML = `${item.name}<div class="pattern-notes">🎧 key and notes hidden · ${item.targets.length} notes</div>`;
+      return;
+    }
     const notes = reveal || settings.patShowNotes
       ? item.targets.map((m) => midiToName(m)).join(' ')
       : `${midiToName(item.targets[0])} … (${item.targets.length} notes)`;
@@ -184,6 +211,8 @@ export class PatternMode {
     this.stopPlayback();
     this.take = null;
     this.result = null;
+    this.revealed = false;
+    $('view-pattern').classList.remove('revealed');
     $('ptResults').innerHTML = '';
     this.setButtons();
 
@@ -211,7 +240,7 @@ export class PatternMode {
       }
 
       if (!along && settings.singStart === 'detect') {
-        const name = settings.patShowNotes ? ` (${midiToName(this.item.targets[0])})` : '';
+        const name = this.namesWhileSinging ? ` (${midiToName(this.item.targets[0])})` : '';
         this.setPhase(`🎤 Start singing the first note${name} when ready…`, true);
         const onset = await this.waitForVoice();
         this.frames = this.recorder.start(onset - Math.round(VOICE_PREROLL * this.recorder.sr));
@@ -282,14 +311,24 @@ export class PatternMode {
     const D = this.D;
     const { targets } = this.item;
     const total = targets.length * D;
+    const along = settings.patFlow === 'along';
+    this.lastVoicedT = 0;
+    this.voicedSec = 0;
     return new Promise((resolve) => {
       let finished = false;
       const update = () => {
         const t = this.recorder.elapsed;
-        const idx = Math.min(targets.length - 1, Math.floor(t / D));
-        const name = settings.patShowNotes ? `: ${midiToName(targets[idx])}` : '';
-        this.setPhase(`🎤 Note ${idx + 1} of ${targets.length}${name}`, true);
-        if (!finished && t >= total + 0.1) {
+        if (along) {
+          // Singing along follows the reference's beat.
+          const idx = Math.min(targets.length - 1, Math.floor(t / D));
+          const name = this.namesWhileSinging ? `: ${midiToName(targets[idx])}` : '';
+          this.setPhase(`🎤 Note ${idx + 1} of ${targets.length}${name}`, true);
+        } else {
+          this.setPhase(`🎤 Sing the ${targets.length} notes at your own pace — stop when you're done`, true);
+        }
+        // Free timing: done once the singer has sung and gone quiet (sing-along: after the reference).
+        const quiet = this.voicedSec >= 0.3 && t - this.lastVoicedT >= END_SILENCE && (!along || t >= total);
+        if (!finished && (t >= takeLimit(total) || quiet)) {
           finished = true;
           this.frameWatcher = null;
           resolve();
@@ -298,7 +337,7 @@ export class PatternMode {
       this.frameWatcher = update;
       const redraw = () => {
         if (finished) return;
-        this.draw(Math.min(this.recorder.elapsed, total));
+        this.draw(this.recorder.elapsed);
         requestAnimationFrame(redraw);
       };
       update();
@@ -361,6 +400,17 @@ export class PatternMode {
   renderResult() {
     const r = this.result;
     const N = r.notes.length;
+    if (this.hidden) {
+      const tol = settings.tolerance;
+      const drift = r.drift == null ? ''
+        : `<div class="av-row"><span class="av-title">Overall</span><span class="av-word ${Math.abs(r.drift) <= tol ? 'ok' : 'no'}">${
+          Math.abs(r.drift) <= tol ? '✓ you stayed in key' : `you drifted ${r.drift > 0 ? 'sharp' : 'flat'}: ${offAmount(r.drift)}`}</span><span></span></div>`;
+      $('ptResults').innerHTML = `
+        <div class="feedback"><div class="verdict ${r.pass ? 'ok' : 'no'}">${r.inTune} of ${N} notes on pitch${r.pass ? ' ✓' : ''}</div></div>
+        <div class="audio-verdicts">${audioVerdictHead()}${r.notes.map((n, i) => audioVerdictHtml(n, `Note ${i + 1}`, tol)).join('')}${drift}</div>
+        ${revealButton()}`;
+      return;
+    }
     const chips = r.notes.map((n) => {
       const name = midiToName(n.target);
       return n.detected
@@ -381,7 +431,7 @@ export class PatternMode {
   renderStats() {
     const s = this.stats;
     const avg = s.attempts ? Math.round(s.scoreSum / s.attempts) : 0;
-    const rows = Object.entries(s.per)
+    const rows = settings.audioOnly ? '' : Object.entries(s.per)
       .map(([name, p]) => {
         const a = Math.round(p.sum / p.n);
         return `<span>${name}</span><div class="bar"><div style="width:${a}%"></div></div><span class="num">avg ${a}</span>`;
@@ -393,7 +443,7 @@ export class PatternMode {
         <div><b>${avg}</b>avg score</div>
         <div><b>${s.passes}</b>all notes in tune</div>
       </div>
-      ${rows ? `<div class="bars wide">${rows}</div>` : '<div class="empty">Per-pattern scores will appear here.</div>'}`;
+      ${rows ? `<div class="bars wide">${rows}</div>` : `<div class="empty">${settings.audioOnly ? 'Per-pattern scores are hidden in audio-only mode.' : 'Per-pattern scores will appear here.'}</div>`}`;
   }
 
   /** Target bands and the sung pitch trace. `now` = playhead / live time in seconds. */
@@ -402,21 +452,28 @@ export class PatternMode {
     if (!this.item) { drawMessage(c, 'Your pitch trace will appear here'); return; }
     const { targets } = this.item;
     const D = this.D ?? settings.patDur;
-    const total = targets.length * D;
+    const N = targets.length;
+    // Free timing: the axis grows with the take; after grading, the bands sit where each note was sung.
+    const lastT = this.frames.length ? this.frames[this.frames.length - 1].t : 0;
+    const total = Math.max(N * D, lastT + 0.2, now ?? 0);
+    const spans = this.result?.spans ?? null;
+    const wins = noteWindows(N, D, spans);
     const p = createPlot(c, { lo: Math.min(...targets) - 3, hi: Math.max(...targets) + 3, t0: 0, t1: total });
     if (!p) return;
     const tol = settings.tolerance;
-    const targetAt = (t) => targets[Math.max(0, Math.min(targets.length - 1, Math.floor(t / D)))];
+    const targetAt = (t) => targets[noteIndexAt(t, N, D, spans)];
 
     // Note windows; the bands and names stay hidden while singing unless "Show note names" is on.
     const reveal = settings.patShowNotes || !this.busy;
     p.g.strokeStyle = p.col('--border');
     p.g.lineWidth = 1;
-    for (let i = 1; i < targets.length; i++) {
-      p.g.beginPath(); p.g.moveTo(p.x(i * D), p.top); p.g.lineTo(p.x(i * D), p.bottom); p.g.stroke();
+    if (!spans) {
+      for (let i = 1; i < N; i++) {
+        p.g.beginPath(); p.g.moveTo(p.x(i * D), p.top); p.g.lineTo(p.x(i * D), p.bottom); p.g.stroke();
+      }
     }
-    const roomForNames = (p.right - p.left) / targets.length >= 26;
-    if (reveal) targets.forEach((tg, i) => drawBand(p, tg, tol, i * D, (i + 1) * D, roomForNames ? midiToName(tg) : ''));
+    const roomForNames = (p.right - p.left) / N >= 26;
+    if (reveal) targets.forEach((tg, i) => { if (wins[i]) drawBand(p, tg, tol, wins[i][0], wins[i][1], roomForNames ? midiToName(tg) : ''); });
 
     // Sung pitch (hidden while singing with "Hide pitch graph while singing")
     if (!(settings.patHideTrace && this.recording)) {

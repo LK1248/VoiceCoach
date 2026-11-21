@@ -1,7 +1,7 @@
 // Shared exercise settings, persisted in localStorage, bound to the sidebar UI.
-import { INTERVALS, DEGREES, midiToName } from './music.js?v=20261016000458';
-import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, BACKING, instrumentRange } from './instruments.js?v=20261016000458';
-import { SCALES, ARPEGGIOS, WARMUPS, FAMILIES } from './patterns.js?v=20261016000458';
+import { INTERVALS, DEGREES, midiToName } from './music.js?v=20261121021911';
+import { INSTRUMENTS, NOTE_MIN, NOTE_MAX, VOWELS, RANDOM, BACKING, instrumentRange } from './instruments.js?v=20261121021911';
+import { SCALES, ARPEGGIOS, WARMUPS, FAMILIES } from './patterns.js?v=20261121021911';
 
 const KEY = 'voiceCoach.settings.v1';
 
@@ -17,7 +17,7 @@ const DEFAULTS = {
   randomDur: false, // Interval ID: each note gets its own random length, MIN_NOTE_DUR…noteDur
   showInterval: true,
   octaveTolerant: true,
-  singStart: 'countdown', // Interval Singing: 'countdown' | 'detect' (start when singing is heard)
+  singStart: 'detect', // Interval Singing, Patterns: 'detect' (start when singing is heard) | 'countdown'
   singleMode: 'align', // Single Note: 'align' (repeat attempts on one note) | 'follow' (hold to advance)
   singleRange: null, // Single Note [lo, hi]; null = instrument default
   singleAllowed: null, // Single Note: allowed MIDI notes within the range; null = all
@@ -28,6 +28,8 @@ const DEFAULTS = {
   harmSolo: false, // Interval ID, notes played together: also show each note's spectrum alone
   rangeRegister: 'chest', // Vocal Range: register of the siren
   sirenStyle: 'vowel', // Vocal Range: 'vowel' | 'nasal' | 'trill'
+  audioOnly: false, // Single Note, Interval Singing, Patterns: no note names or pitch graph; sharp/flat feedback only
+  holdHidden: false, // Single Note, pitch following, audio only: hide the hold bar and chime on a match instead
   songVideos: {}, // Interval ID song references: { 'asc:7': 'https://youtu.be/…' }
   micId: null, // chosen microphone (deviceId); null = the browser's default
   keepAlive: true, // play inaudible noise so Bluetooth audio doesn't power down between notes // Interval ID: go to the next interval after a correct answer
@@ -76,6 +78,8 @@ function load() {
     const saved = JSON.parse(localStorage.getItem(KEY) || '{}');
     const s = { ...structuredClone(DEFAULTS), ...saved };
     if (!INSTRUMENTS[s.instrument] && s.instrument !== RANDOM) s.instrument = DEFAULTS.instrument;
+    // Free timing arrived: start on the voice by default, also for settings saved before it.
+    if (!saved.freeTiming) { s.singStart = 'detect'; s.freeTiming = true; }
     return s;
   } catch {
     return structuredClone(DEFAULTS);

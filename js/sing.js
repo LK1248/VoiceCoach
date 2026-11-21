@@ -1,9 +1,10 @@
 // Interval singing: hear two notes, sing them back, get graded on pitch
 // accuracy, and compare the recording against the reference.
-import { INTERVALS, midiToName, pickItem } from './music.js?v=20261016000458';
-import { levelPercent } from './recorder.js?v=20261016000458';
-import { GRADE_FROM, GRADE_TO, segmentCents, octaveShift, scoreNote, fmtCents, noteCardHtml } from './grading.js?v=20261016000458';
-import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261016000458';
+import { INTERVALS, midiToName, pickItem } from './music.js?v=20261121021911';
+import { levelPercent } from './recorder.js?v=20261121021911';
+import { gradeTake, noteWindows, noteIndexAt, END_SILENCE, takeLimit } from './align.js?v=20261121021911';
+import { fmtCents, noteCardHtml, audioVerdictHtml, audioVerdictHead, offAmount, revealButton } from './grading.js?v=20261121021911';
+import { settings, getRange, vowelsFor, soundText, instrumentFor } from './settings.js?v=20261121021911';
 
 const $ = (id) => document.getElementById(id);
 const COUNT_IN_BEAT = 0.6; // seconds
@@ -13,18 +14,16 @@ const VOICE_TIMEOUT = 15; // seconds to wait for singing in detect mode
 const freshStats = () => ({ attempts: 0, scoreSum: 0, passes: 0, per: {} });
 
 /**
- * Grade the pitch frames of a take. Note i is expected in [i*D, (i+1)*D).
- * With octave tolerance, one octave shift (derived from note 1) is applied to
- * both notes so the sung *interval* must still be correct.
+ * Grade the pitch frames of a take with free timing: the take is split into the singer's own
+ * notes and matched to the two targets (align.js). With octave tolerance one octave shift
+ * applies to both notes, so the sung *interval* must still be correct.
  */
 export function grade(frames, item, D, tol, octaveTolerant) {
-  const segs = [item.root, item.second].map((target, i) =>
-    segmentCents(frames, target, (i + GRADE_FROM) * D, (i + GRADE_TO) * D));
-  const shift = octaveTolerant ? octaveShift(segs[0].raw.length >= 3 ? segs[0].raw : segs[1].raw) : 0;
-  const notes = [item.root, item.second].map((target, i) => scoreNote(target, segs[i], tol, shift));
+  const { notes, shift, spans } = gradeTake(frames, [item.root, item.second], tol, octaveTolerant);
   return {
     notes,
     shift,
+    spans,
     intervalErr: notes.every((n) => n.detected) ? notes[1].cents - notes[0].cents : null,
     score: Math.round((notes[0].score + notes[1].score) / 2),
     pass: notes.every((n) => n.ok),
@@ -55,6 +54,7 @@ export class SingMode {
     $('cmpSeq').onclick = () => this.compare('seq');
     $('cmpStop').onclick = () => this.stopPlayback();
     $('sgResetStats').onclick = () => { this.stats = freshStats(); this.renderStats(); };
+    $('sgResults').onclick = (e) => { if (e.target.closest('[data-act="reveal"]')) this.reveal(); };
 
     new ResizeObserver(() => this.draw()).observe($('sgCanvas'));
     this.renderStats();
@@ -68,7 +68,23 @@ export class SingMode {
     else if (key === 'r' && this.item) this.run(false); // Try again (same interval)
   }
 
+  /** Audio only, and this take hasn't been revealed. */
+  get hidden() { return settings.audioOnly && !this.revealed; }
+
+  reveal() {
+    this.revealed = true;
+    $('view-sing').classList.add('revealed');
+    this.showLabel(true);
+    this.renderResult();
+    this.draw();
+  }
+
   onSettings(field) {
+    if (field === 'audioOnly') {
+      if (this.item && !this.busy) this.showLabel(!!this.result);
+      if (this.result) this.renderResult();
+      this.renderStats();
+    }
     if ((field === 'showInterval' || field === 'vowel' || field === 'instrument') && this.item && !this.busy) this.showLabel(true);
     if ((field === 'tolerance' || field === 'octaveTolerant') && this.result) {
       // Re-grade the existing take with the new criteria (stats keep the original score).
@@ -80,7 +96,10 @@ export class SingMode {
 
   onFrame(f) {
     $('sgLevel').style.width = `${levelPercent(f.rms)}%`;
-    if (this.recording && f.t != null) this.frames.push(f);
+    if (this.recording && f.t != null) {
+      this.frames.push(f);
+      if (f.voiced) { this.lastVoicedT = f.t; this.voicedSec += 1024 / this.recorder.sr; }
+    }
     this.voiceWatcher?.(f);
     this.frameWatcher?.();
   }
@@ -102,6 +121,7 @@ export class SingMode {
     const { item } = this;
     const el = $('sgInterval');
     if (!item) { el.innerHTML = '&nbsp;'; return; }
+    if (this.hidden) { el.textContent = '🎧 Interval ?'; return; }
     const arrow = item.interval.semis === 0 ? '' : item.dir === 'desc' ? '↓' : '↑';
     el.textContent = reveal || settings.showInterval
       ? `${arrow} ${item.interval.name}  ·  ${midiToName(item.root)} → ${midiToName(item.second)}${soundText(item)}`
@@ -114,6 +134,8 @@ export class SingMode {
     this.stopPlayback();
     this.take = null;
     this.result = null;
+    this.revealed = false;
+    $('view-sing').classList.remove('revealed');
     $('sgResults').innerHTML = '';
     this.setButtons();
 
@@ -137,7 +159,7 @@ export class SingMode {
       await this.engine.waitUntil(r.end + 0.35 + lag);
 
       if (settings.singStart === 'detect') {
-        const name = settings.showInterval ? ` (${midiToName(this.item.root)})` : '';
+        const name = settings.showInterval && !settings.audioOnly ? ` (${midiToName(this.item.root)})` : '';
         this.setPhase(`🎤 Start singing note 1${name} when ready…`, true);
         const onset = await this.waitForVoice();
         this.frames = this.recorder.start(onset - Math.round(VOICE_PREROLL * this.recorder.sr));
@@ -214,17 +236,22 @@ export class SingMode {
    * incoming mic frame (keeps working in a background tab, where
    * requestAnimationFrame pauses); animation frames only redraw.
    */
+  /**
+   * Resolve when the take is over: once the singer has sung and then been silent for
+   * END_SILENCE (free timing), or at a hard limit.
+   */
   liveLoop() {
     const D = this.D;
+    this.lastVoicedT = 0;
+    this.voicedSec = 0;
+    const names = settings.showInterval && !settings.audioOnly ? `: ${midiToName(this.item.root)} → ${midiToName(this.item.second)}` : '';
     return new Promise((resolve) => {
       let finished = false;
       const update = () => {
         const t = this.recorder.elapsed;
-        const idx = t < D ? 0 : 1;
-        const target = [this.item.root, this.item.second][idx];
-        const name = settings.showInterval ? `: ${midiToName(target)}` : '';
-        this.setPhase(`🎤 Sing note ${idx + 1}${name}`, true);
-        if (!finished && t >= 2 * D + 0.1) {
+        this.setPhase(`🎤 Sing both notes${names}, at your own pace — stop when you're done`, true);
+        const done = t >= takeLimit(2 * D) || (this.voicedSec >= 0.3 && t - this.lastVoicedT >= END_SILENCE);
+        if (!finished && done) {
           finished = true;
           this.frameWatcher = null;
           resolve();
@@ -233,7 +260,7 @@ export class SingMode {
       this.frameWatcher = update;
       const redraw = () => {
         if (finished) return;
-        this.draw(Math.min(this.recorder.elapsed, 2 * D));
+        this.draw(this.recorder.elapsed);
         requestAnimationFrame(redraw);
       };
       update();
@@ -305,6 +332,20 @@ export class SingMode {
   renderResult() {
     const r = this.result;
     const tol = settings.tolerance;
+    if (this.hidden) {
+      // Audio only: sharp/flat per note and whether the interval was too wide or narrow.
+      let iv = '';
+      if (r.intervalErr != null) {
+        const wide = r.intervalErr * (this.item.dir === 'asc' ? 1 : -1); // + = too wide
+        iv = `<div class="av-row"><span class="av-title">Interval</span><span class="av-word ${Math.abs(wide) <= tol ? 'ok' : 'no'}">${
+          Math.abs(wide) <= tol ? '✓ the right size' : `too ${wide > 0 ? 'wide' : 'narrow'}: ${offAmount(wide)}`}</span><span></span></div>`;
+      }
+      $('sgResults').innerHTML = `
+        <div class="feedback"><div class="verdict ${r.pass ? 'ok' : 'no'}">${r.pass ? 'Both notes on pitch ✓' : 'Keep practising'}</div></div>
+        <div class="audio-verdicts">${audioVerdictHead()}${r.notes.map((n, i) => audioVerdictHtml(n, `Note ${i + 1}`, tol)).join('')}${iv}</div>
+        ${revealButton()}`;
+      return;
+    }
     const noteHtml = r.notes.map((n, i) => noteCardHtml(n, `Note ${i + 1}`, tol)).join('');
 
     let intervalLine = '';
@@ -324,7 +365,8 @@ export class SingMode {
   renderStats() {
     const s = this.stats;
     const avg = s.attempts ? Math.round(s.scoreSum / s.attempts) : 0;
-    const rows = INTERVALS.filter((i) => s.per[i.semis])
+    // Audio only: the per-interval rows would give away what was played.
+    const rows = settings.audioOnly ? '' : INTERVALS.filter((i) => s.per[i.semis])
       .map((i) => {
         const p = s.per[i.semis];
         const a = Math.round(p.sum / p.n);
@@ -337,7 +379,7 @@ export class SingMode {
         <div><b>${avg}</b>avg score</div>
         <div><b>${s.passes}</b>passed</div>
       </div>
-      ${rows ? `<div class="bars">${rows}</div>` : '<div class="empty">Per-interval scores will appear here.</div>'}`;
+      ${rows ? `<div class="bars">${rows}</div>` : `<div class="empty">${settings.audioOnly ? 'Per-interval scores are hidden in audio-only mode.' : 'Per-interval scores will appear here.'}</div>`}`;
   }
 
   /** Draw target bands and the sung pitch trace. `now` = playhead/live time in seconds. */
@@ -366,8 +408,13 @@ export class SingMode {
     }
 
     const D = this.D ?? settings.singDur;
-    const total = 2 * D;
     const targets = [this.item.root, this.item.second];
+    // Free timing: the axis grows with the take; after grading, the bands sit where each note was sung.
+    const lastT = this.frames.length ? this.frames[this.frames.length - 1].t : 0;
+    const total = Math.max(2 * D, lastT + 0.2, now ?? 0);
+    const spans = this.result?.spans ?? null;
+    const wins = noteWindows(2, D, spans);
+    const idxAt = (t) => noteIndexAt(t, 2, D, spans);
     const lo = Math.min(...targets) - 4;
     const hi = Math.max(...targets) + 4;
     const padL = 42, padR = 10, padT = 8, padB = 20;
@@ -389,42 +436,38 @@ export class SingMode {
         g.fillText(midiToName(m), padL - 6, y(m));
       }
     }
-    // Window divider + labels
-    g.strokeStyle = col('--border');
-    g.beginPath();
-    g.moveTo(x(D), padT);
-    g.lineTo(x(D), h - padB);
-    g.stroke();
+    // Note labels under each note's window
     g.textAlign = 'center';
     g.textBaseline = 'alphabetic';
     g.fillStyle = col('--muted');
-    g.fillText('Note 1', x(D / 2), h - 5);
-    g.fillText('Note 2', x(1.5 * D), h - 5);
+    wins.forEach((wn, i) => { if (wn) g.fillText(`Note ${i + 1}`, x((wn[0] + wn[1]) / 2), h - 5); });
 
     // Target bands (hidden while singing if the interval is hidden)
     const reveal = settings.showInterval || !this.busy;
     const tolS = settings.tolerance / 100;
     if (reveal) {
       targets.forEach((tg, i) => {
+        const wn = wins[i];
+        if (!wn) return; // not sung
         g.fillStyle = col('--target');
-        g.fillRect(x(i * D), y(tg + tolS), x((i + 1) * D) - x(i * D), y(tg - tolS) - y(tg + tolS));
+        g.fillRect(x(wn[0]), y(tg + tolS), x(wn[1]) - x(wn[0]), y(tg - tolS) - y(tg + tolS));
         g.strokeStyle = col('--accent');
         g.setLineDash([4, 4]);
         g.beginPath();
-        g.moveTo(x(i * D), y(tg));
-        g.lineTo(x((i + 1) * D), y(tg));
+        g.moveTo(x(wn[0]), y(tg));
+        g.lineTo(x(wn[1]), y(tg));
         g.stroke();
         g.setLineDash([]);
         g.fillStyle = col('--accent');
         g.textAlign = 'left';
-        g.fillText(midiToName(tg), x(i * D) + 4, y(tg + tolS) - 3);
+        g.fillText(midiToName(tg), x(wn[0]) + 4, y(tg + tolS) - 3);
       });
     }
 
     // Pitch trace
     const shiftSemis = this.result ? this.result.shift / 100 : 0;
     const display = (f) => {
-      const target = targets[f.t < D ? 0 : 1];
+      const target = targets[idxAt(f.t)];
       if (this.result) return f.midi + shiftSemis;
       if (settings.octaveTolerant) return f.midi - 12 * Math.round((f.midi - target) / 12);
       return f.midi;
@@ -435,7 +478,7 @@ export class SingMode {
     for (const f of this.frames) {
       if (!f.voiced) { prev = null; continue; }
       const m = Math.max(lo, Math.min(hi, display(f)));
-      const target = targets[f.t < D ? 0 : 1];
+      const target = targets[idxAt(f.t)];
       const inTol = Math.abs(m - target) <= tolS;
       if (prev && f.t - prev.t < 0.08) {
         g.strokeStyle = inTol ? col('--good') : col('--bad');

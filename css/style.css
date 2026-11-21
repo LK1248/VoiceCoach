@@ -296,6 +296,53 @@ button.link.song-link { color: var(--muted); padding: 0; min-height: 0; }
   .song-row .song-cell + .song-cell, .song-row .song-cell + .song-none, .song-row .song-none + .song-cell { grid-column: 2; }
 }
 
+/* Audio-only mode */
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px 12px; }
+.card-head .prompt { flex: 1 1 auto; }
+.audio-toggle {
+  flex: none; display: inline-flex; align-items: center; gap: 8px; border-radius: 999px;
+  padding: 5px 12px 5px 8px; font-size: 13px; white-space: nowrap;
+}
+.audio-toggle .switch { position: relative; width: 28px; height: 16px; border-radius: 8px; background: var(--border); transition: background 0.15s; }
+.audio-toggle .switch::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--panel); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); transition: left 0.15s;
+}
+.audio-toggle[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.audio-toggle[aria-pressed="true"] .switch { background: var(--accent); }
+.audio-toggle[aria-pressed="true"] .switch::after { left: 14px; }
+body.audio-only .view:not(.revealed) .audio-hide { display: none !important; }
+.audio-only-only { display: none; }
+body.audio-only .audio-only-only { display: inline-block; }
+.check.overridden { opacity: 0.5; }
+.check.overridden::after { content: "(audio-only mode)"; font-size: 11px; color: var(--muted); }
+/* Hold bar swapped for a chime */
+.hold-chime-note { display: none; font-size: 13px; color: var(--muted); }
+.follow-box.hold-hidden .hold { display: none; }
+.follow-box.hold-hidden .hold-chime-note { display: inline; }
+#snHoldHide { font-size: 12px; }
+/* Sharp / flat verdicts */
+.audio-verdicts { display: grid; gap: 10px; margin: 12px 0 8px; max-width: 680px; }
+.av-row { display: grid; grid-template-columns: 96px 1fr 230px; gap: 12px; align-items: center; font-size: 20px; }
+.av-title { color: var(--muted); font-size: 16px; }
+.av-word { font-weight: 600; }
+.av-word.ok { color: var(--good); }
+.av-word.no { color: var(--bad); }
+.gauge { position: relative; height: 16px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--border); }
+.gauge::before { content: ""; position: absolute; left: 50%; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--muted); }
+.gauge-tol { position: absolute; top: 0; bottom: 0; background: var(--good-soft); }
+.gauge i { position: absolute; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; box-shadow: 0 0 0 2px var(--panel); }
+.gauge i.ok { background: var(--good); }
+.gauge i.no { background: var(--bad); }
+.av-head { font-size: 13px; }
+.gauge-labels { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+.reveal-link { font-size: 13px; margin-top: 4px; }
+@media (max-width: 560px) {
+  .av-row { grid-template-columns: 70px 1fr 120px; gap: 8px; font-size: 17px; }
+  .av-title { font-size: 14px; }
+  .audio-toggle kbd { display: none; }
+}
+
 /* Patterns */
 .pattern-notes { font-size: 14px; font-weight: 500; color: var(--muted); margin-top: 2px; word-spacing: 2px; }
 .pattern-chips .chip-score { font-size: 13px; padding: 2px 8px; }

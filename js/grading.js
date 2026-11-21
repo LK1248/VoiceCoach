@@ -1,5 +1,5 @@
 // Shared pitch grading: the same per-note metric is used by every singing theme.
-import { median, midiToName } from './music.js?v=20261016000458';
+import { median, midiToName } from './music.js?v=20261121021911';
 
 export const GRADE_FROM = 0.25; // ignore the first 25% of a note window (onset / glide)
 export const GRADE_TO = 0.95;
@@ -34,6 +34,34 @@ export function scoreNote(target, { total, raw }, tol, shift = 0) {
     ok: Math.abs(med) <= tol,
   };
 }
+
+/** How far off a pitch error is, in words (beyond the tolerance). */
+export const offAmount = (cents) => {
+  const a = Math.abs(cents);
+  return a <= 50 ? 'a little' : a <= 100 ? 'clearly' : 'more than a semitone';
+};
+
+/**
+ * Audio-only feedback for one note: on pitch / sharp / flat and roughly how much, with a
+ * small flat ← → sharp gauge (±100¢, clamped). No note names, no cents.
+ */
+export function audioVerdictHtml(n, title, tol) {
+  if (!n.detected) {
+    return `<div class="av-row"><span class="av-title">${title}</span><span class="av-word no">no clear pitch heard</span><span></span></div>`;
+  }
+  const ok = Math.abs(n.cents) <= tol;
+  const word = ok ? '✓ on pitch' : `${n.cents > 0 ? '♯ sharp' : '♭ flat'}: ${offAmount(n.cents)}`;
+  const pos = 50 + Math.max(-100, Math.min(100, n.cents)) / 2;
+  const band = Math.min(100, tol); // ±tol on a ±100¢ scale
+  return `<div class="av-row"><span class="av-title">${title}</span><span class="av-word ${ok ? 'ok' : 'no'}">${word}</span>
+    <span class="gauge" title="flat ← → sharp"><span class="gauge-tol" style="left:${50 - band / 2}%;width:${band}%"></span><i class="${ok ? 'ok' : 'no'}" style="left:${pos}%"></i></span></div>`;
+}
+
+/** Header for a list of audio-only verdict rows (labels the gauges). */
+export const audioVerdictHead = () => '<div class="av-row av-head"><span></span><span></span><span class="gauge-labels"><span>flat</span><span>sharp</span></span></div>';
+
+/** "Reveal" link shown under audio-only feedback. */
+export const revealButton = (act = 'reveal') => `<button class="link reveal-link" data-act="${act}" title="Show the notes, the cents and the pitch graph for this take">Reveal notes and graph</button>`;
 
 export const fmtCents = (c) => `${c > 0 ? '+' : c < 0 ? '−' : '±'}${Math.abs(Math.round(c))}¢`;
 
